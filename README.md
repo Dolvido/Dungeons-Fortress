@@ -1,4 +1,4 @@
-# README for the Text-Based Dungeon Adventure Game
+# Dungeons Fortress
 
 ## Overview
 Welcome to the Text-Based Dungeon Adventure Game! Embark on an interactive and dynamic journey where you, the adventurer, navigate through mysterious and dangerous dungeons. Utilizing the power of advanced language models, every adventure is unique, offering new challenges and surprises.
