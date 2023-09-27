@@ -18,6 +18,7 @@ class Dungeon:
         self.depth = 0
         self.threat_level = 1
         self.max_threat_level = 5
+        self.threat_level_multiplier = 1.5
 
 
     def start(self):
@@ -114,6 +115,7 @@ class Dungeon:
 
                 damage_taken = random.randint(5, 20)  # Example: Random damage taken
                 response += "\n"+self.get_damage_message(damage_taken, self.threat_level)
+                self.check_player_has_died()
 
             except Exception as e:
                 response = f"I couldn't generate a response due to the following error: {str(e)}"
@@ -223,7 +225,7 @@ class Dungeon:
 
     def update_threat_level(self):
         # Update threat level exponentially
-        self.threat_level *= 1.1  # Adjust the multiplier as needed
+        self.threat_level *= self.threat_level_multiplier  # Adjust the multiplier as needed
 
         # Cap the threat level to the maximum value
         self.threat_level = min(self.threat_level, self.max_threat_level)
@@ -246,12 +248,13 @@ class Dungeon:
             response += "\nUnfortunately, you didn't manage to collect any treasures this time."
         self.history = []
         self.history.append("Player fled from the dungeon.")
+        self.threat_level = 1 
         return response
 
     def check_player_has_died(self):
         if self.player.health <= 0:
             print("Player Death event triggered")
-            self.reset_dungeon()
+            self.threat_level = 1
             return "Game Over! You have died."
         else:
             return False

@@ -32,11 +32,15 @@ class Player:
 
     def die(self):
         death_message = "You have died."
-        if self.inventory:
-            treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items])
+
+        # Print out the inventory before it's lost
+        if self.inventory and any(self.inventory.values()):
+            treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items if items])
             lost_treasures = f"You've lost all your treasures: {treasures}"
         else:
             lost_treasures = "You died with no treasures in your possession."
+
+        # Now reset the player's state including the inventory
         self.reset_player()
 
         return death_message, lost_treasures
