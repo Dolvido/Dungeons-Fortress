@@ -1,9 +1,12 @@
+import random
+
 class Player:
 
     def __init__(self):
         self.exp = 0
         self.doubloons = 0
         self.health = 100
+        self.max_base_damage = 10
         self.inventory = {}
 
     def award_exp(self, exp):
@@ -12,9 +15,31 @@ class Player:
     def get_stats(self):
         return self.exp, self.health
 
-    def decrement_health(self, damage):
-        self.health -= damage
-        self.health = max(0, self.health)
+
+    def decrement_health(self, base_damage, threat_level):
+        base_damage = random.randint(1, self.max_base_damage)  # Random base damage up to max_base_damage
+        scaled_damage = base_damage * (threat_level ** 2)  # Adjusted scaling formula
+        self.health -= scaled_damage
+        self.health = max(0, self.health)  # Ensure health does not go below 0
+
+        response = f"\nYou took {scaled_damage} damage and have {self.health} health remaining."
+
+        if self.health == 0:
+            death_message, lost_treasures = self.die()  
+            response += f"\n{death_message}\n{lost_treasures}"
+
+        return response
+
+    def die(self):
+        death_message = "You have died."
+        if self.inventory:
+            treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items])
+            lost_treasures = f"You've lost all your treasures: {treasures}"
+        else:
+            lost_treasures = "You died with no treasures in your possession."
+        self.reset_player()
+
+        return death_message, lost_treasures
 
     def add_to_inventory(self, category, item):
         if category not in self.inventory:

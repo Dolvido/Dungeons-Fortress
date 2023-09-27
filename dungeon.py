@@ -16,8 +16,9 @@ class Dungeon:
         self.history = []
         self.repo_id_llm = "tiiuae/falcon-7b-instruct"  # See https://huggingface.co/models?pipeline_tag=text-generation&sort=downloads for some other options
         self.depth = 0
+        self.threat_level = 1
+        self.max_threat_level = 5
 
-    # Initialize the LLM and other needed attributes here
 
     def start(self):
         print("start_dungeon")
@@ -51,31 +52,30 @@ class Dungeon:
     def continue_adventure(self):
         print("continue_dungeon")
         self.depth += 1
-        print(self.history)
+        damage_taken = 0
+        response = ""
 
         # Calculate threat level
-        threat_level = self.calculate_threat_level()
-        print(f"Threat Level: {threat_level}")
-
+        self.update_threat_level()
+        print(f"Threat Level: {self.threat_level}")
+        response += f"\nThreat Level: {self.threat_level}"
+        
         # Determine encounter based on threat level
-        encounter_value = random.uniform(
-            0, 1
-        ) - threat_level  # Example: random encounter value adjusted by threat level
-
-        if encounter_value < 0.3:
-            encounter = "combat"
-        elif encounter_value < 0.6:
-            encounter = "treasure"
-        else:
-            encounter = "nothing"
+        # Determine encounter type based on threat level using weighted random choice
+        weights = {
+            "combat": self.threat_level,  # combat becomes more likely as threat level increases
+            "treasure": max(1, 5 - self.threat_level),  # adjust these formulas as needed
+            "nothing": max(1, 10 - self.threat_level)   # adjust these formulas as needed
+        }
+        encounter = random.choices(
+            population=["combat", "treasure", "nothing"], 
+            weights=[weights["combat"], weights["treasure"], weights["nothing"]],
+            k=1
+        )[0]
 
         # if combat encounter
         if (encounter == "combat"):
-            response = "COMBAT ENCOUNTER\n"
-            #calculate encoutner threat level
-            threat_level = self.calculate_threat_level()
-
-            encounter_value = random.uniform(0, 1) - threat_level
+            response += "\nCOMBAT ENCOUNTER\n"
             random_temperature = random.uniform(0.01, 1.0)
 
             dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
@@ -91,7 +91,7 @@ class Dungeon:
 
             # create language model chain and run against our prompt
             enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm)
-            enemy_description = enemy_chain.run(str(encounter_value))
+            enemy_description = enemy_chain.run(str(encounter))
 
             combat_encounter_prompt = """The previous step in our adventure follows: {encounter}
             Amidst the eerie silence of the dungeon, a menacing enemy emerges from the shadows; {enemy} its eyes gleaming with hostility. The air grows cold and tense as the impending clash of forces looms. Armed with {weapon}, our hero faces the beast.
@@ -113,18 +113,14 @@ class Dungeon:
                 self.player.award_exp(earned_exp)
 
                 damage_taken = random.randint(5, 20)  # Example: Random damage taken
-                self.player.decrement_health(damage_taken)  # Decrement player’s health
-
-                response += f"\nYou Earned:\n{earned_exp} exp"
-                response += f"\nYou Took:\n{damage_taken} damage"  # Added damage information
-                response += f"\nCurrent Health:\n{self.player.health}"  # Added current health information
+                response += "\n"+self.get_damage_message(damage_taken, self.threat_level)
 
             except Exception as e:
                 response = f"I couldn't generate a response due to the following error: {str(e)}"
 
         # if treasure encounter
         if (encounter == "treasure"):
-            response = "TREASURE ROOM\n"
+            response += "\nTREASURE ROOM\n"
             random_temperature = random.uniform(0.01, 1.0)
 
             dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
@@ -191,7 +187,7 @@ class Dungeon:
 
             # if nothing
         if (encounter == "nothing"):
-            response = "EMPTY ROOM\n"
+            response += "\nEMPTY ROOM\n"
             # Randomize the temperature between 0.1 and 1.0 to get a new adventure each time
             random_temperature = random.uniform(0.01, 1.0)
 
@@ -217,9 +213,7 @@ class Dungeon:
             except Exception as e:
                 response = f"I couldn't generate a response due to the following error: {str(e)}"
 
-        # end of continue_adventure
-        self.check_player_health()
-            
+        # end of continue_adventure            
         return response
 
     def stop(self):
@@ -227,11 +221,13 @@ class Dungeon:
         response = "Stopping the dungeon..."  # Placeholder, replace with actual implementation
         return response
 
-    def calculate_threat_level(self):
-        # Modify this method to calculate threat level based on dungeon depth
-        # and potentially other factors
-        threat_level = self.depth * 0.1  # Example calculation
-        return min(1, threat_level)  # Ensure threat level doesn’t exceed 1
+    def update_threat_level(self):
+        # Update threat level exponentially
+        self.threat_level *= 1.1  # Adjust the multiplier as needed
+
+        # Cap the threat level to the maximum value
+        self.threat_level = min(self.threat_level, self.max_threat_level)
+
 
     def flee(self):
         """
@@ -252,10 +248,19 @@ class Dungeon:
         self.history.append("Player fled from the dungeon.")
         return response
 
-    def check_player_health(self):
+    def check_player_has_died(self):
         if self.player.health <= 0:
-            print("Game Over! You have died.")
+            print("Player Death event triggered")
             self.reset_dungeon()
+            return "Game Over! You have died."
+        else:
+            return False
+        
+    def get_damage_message(self, base_damage, threat_level):
+        response = self.player.decrement_health(base_damage, threat_level)
+
+        # You can also return the response if needed
+        return response
 
     def reset_dungeon(self):
         print("Resetting dungeon...")
