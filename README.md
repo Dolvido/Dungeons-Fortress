@@ -3,6 +3,8 @@
 ## Overview
 Welcome to the Text-Based Dungeon Adventure Game! Embark on an interactive and dynamic journey where you, the adventurer, navigate through mysterious and dangerous dungeons. Utilizing the power of advanced language models, every adventure is unique, offering new challenges and surprises.
 
+![Gameplay](gameplay.png)
+
 ## Features
 - **Dynamic Storytelling:** Powered by GPT-based language models, experience a new adventure every time you enter the dungeon.
 - **Player Progression:** Gain experience, improve your health, and collect doubloons as you navigate through the dungeon's various challenges.

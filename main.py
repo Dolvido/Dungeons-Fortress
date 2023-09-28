@@ -34,6 +34,12 @@ dungeon = Dungeon(player)
 async def on_ready():
     print(f'We have logged in as {client.user}')
 
+async def send_message(message, response):
+    # Split the message into chunks of 2000 characters or less
+    message_chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
+
+    for chunk in message_chunks:
+        await message.channel.send(chunk)
 
 @client.event
 async def on_message(message):
@@ -42,28 +48,29 @@ async def on_message(message):
 
     if message.content.startswith('/start'):
         response = dungeon.start()
-        await message.channel.send(response)
+        await send_message(message, response)
 
     elif message.content.startswith('/stop'):
         response = dungeon.stop()
-        await message.channel.send(response)
+        await send_message(message, response)
 
     elif message.content.startswith('/continue'):
         response = dungeon.continue_adventure()
-        await message.channel.send(response)
+        await send_message(message, response)
 
     elif message.content.startswith('/stats'):
         exp, health = player.get_stats()
-        await message.channel.send(f"EXP: {exp}\nHealth: {health}")
+        response = f"EXP: {exp}\nHealth: {health}"
+        await send_message(message, response)
 
     elif message.content.startswith('/flee'):
         response = dungeon.flee()
-        await message.channel.send(response)
+        await send_message(message, response)
 
     elif message.content.startswith('/inventory'):
-        inventory = player.view_inventory(
-        )  # This will now display items categorically
-        await message.channel.send(f"Your Inventory:\n{inventory}")
+        inventory = player.view_inventory()  # This will now display items categorically
+        response = f"Your Inventory:\n{inventory}"
+        await send_message(message, response)
 
 
 # Starting the Discord client

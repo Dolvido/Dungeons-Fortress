@@ -16,18 +16,13 @@ class Dungeon:
         print("init dungeon class")
         self.player = player
         self.history = []
-        #self.repo_id_llm = "mosaicml/mpt-7b-instruct"
         self.repo_id_llm = "tiiuae/falcon-7b-instruct"  # See https://huggingface.co/models?pipeline_tag=text-generation&sort=downloads for some other options
         self.depth = 0
         self.threat_level = 1
         self.max_threat_level = 5
         self.threat_level_multiplier = 1.5
         self.chat_history = ChatMessageHistory()
-        #self.memory = BufferMemory(chat_history=self.chat_history)
-        self.memory = ConversationBufferMemory(memory_key="adventure_history")
-        #self.memory.save_context({"input", "The hero enters the dungeon."}, {"output", "The hero enters the dungeon."})
-
-
+        self.memory = BufferMemory(chat_history=self.chat_history)
 
 
     def start(self):
@@ -43,15 +38,16 @@ class Dungeon:
                                         })
 
         # Define a dungeoneering adventure prompt template
-        prompt_template = """{adventure_history} Describe the scene for a {adventure_type} adventure and set the stage for a dungeon adventure."""
-        dungeon_start_prompt = PromptTemplate(template=prompt_template,
-                                                input_variables=["adventure_history", "adventure_type"])
+        dung_start_template = """Describe the beginning of a fantasy {target}. The adventurer is about to depart on a grisly adventure into a dungeon that they may not survive. Set the stage."""
+
+        dungeon_start_prompt = PromptTemplate(template=dung_start_template,
+                                                input_variables=["target"])
 
         llm_chain = LLMChain(prompt=dungeon_start_prompt, llm=dungeon_llm, memory=self.memory)
-
+        """Generates a llm chain response to the given query."""
         try:
-            response = llm_chain.predict(adventure_type="dungeoneering")
-            #self.history.append(response)
+            response = llm_chain.run("adventure")
+            self.history.append(response)
             response += "\nDo you /continue or /flee?"
         except Exception as e:
             response = f"I couldn't generate a response due to the following error: {str(e)}"
@@ -94,32 +90,30 @@ class Dungeon:
                                         })
 
             #GENERATE ENEMY
-            generate_enemy_prompt = """{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat at power level {enemy_threat_level}. Describe the enemy that emerges from the shadows to challenge the hero."""
+            generate_enemy_prompt = """In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat at power level {enemy_threat_level} Describe the enemy that emerges from the shadows to challenge the hero."""
             llm_enemy_prompt = PromptTemplate(template=generate_enemy_prompt,
-                                            input_variables=["adventure_history", "enemy_threat_level"])
+                                            input_variables=["enemy_threat_level"])
 
             # create language model chain and run against our prompt
             enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm, memory=self.memory)
-            enemy_description = enemy_chain.predict(enemy_threat_level=self.threat_level)
+            enemy_description = enemy_chain.run(str(encounter))
 
-            combat_encounter_prompt = """{adventure_history} The previous step in our adventure follows: {encounter}
-            Amidst the eerie silence of the dungeon, a menacing enemy emerges from the shadows ; Its eyes gleaming with hostility. The air grows cold and tense as the impending clash of forces looming. Our hero faces the beast.
-
+            combat_encounter_prompt = """The previous step in our adventure follows: {encounter}
+            Amidst the eerie silence of the dungeon, a menacing enemy emerges from the shadows; {enemy} its eyes gleaming with hostility. The air grows cold and tense as the impending clash of forces looms. Armed with {weapon}, our hero faces the beast.
+            
             Describe the battle in depth."""
-            weapon="sword"
-            combat_description = f"The enemy is {enemy_description} and the hero is armed with a {weapon}."
-
-
             llm_prompt = PromptTemplate(
                 template=combat_encounter_prompt,
-                input_variables=["adventure_history", "encounter"])
+                input_variables=["encounter", "enemy", "weapon"])
 
             llm_chain = LLMChain(prompt=llm_prompt, llm=dungeon_llm, memory=self.memory)
 
             try:
                 response += enemy_description
-                response += llm_chain.predict(encounter=combat_description)                
-                #self.history.append(response)
+                response += llm_chain.run(encounter=self.history[-1],
+                                            enemy=enemy_description,
+                                            weapon="short sword")
+                self.history.append(response)
                 earned_exp = 5
                 self.player.award_exp(earned_exp)
 
@@ -136,29 +130,41 @@ class Dungeon:
             random_temperature = random.uniform(0.01, 1.0)
 
             dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
-                                            model_kwargs={
-                                                "temperature": random_temperature,
-                                                "max_new_tokens": 250
-                                            })
+                                        model_kwargs={
+                                            "temperature": random_temperature,
+                                            "max_new_tokens": 250
+                                        })
 
-            treasure_encounter_prompt = """{adventure_history} A glimmer of light pierces the overwhelming darkness of the dungeon. Our hero, intrigued and hopeful, follows the gleaming trail. Hidden away in the obscurity, a majestic treasure awaits; {treasure} a testament to the lost civilization that once thrived here, now promising power and wealth.
+            treasure_encounter_prompt = """ A glimmer of light pierces the overwhelming darkness of the dungeon. Our hero, intrigued and hopeful, follows the gleaming trail. Hidden away in the obscurity, a majestic treasure awaits; {treasure} a testament to the lost civilization that once thrived here, now promising power and wealth.
 
         Describe the next events in detail."""
             llm_prompt = PromptTemplate(template=treasure_encounter_prompt,
-                                        input_variables=["adventure_history", "treasure"])
+                                        input_variables=["treasure"])
 
-            generate_treasure_prompt = """{adventure_history} In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {material} {type} adorned with {adornment}, an artifact of the {era} era, believed to possess {power}."""
+            generate_treasure_prompt = """In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {material} {type} adorned with {adornment}, an artifact of the {era} era, believed to possess {power}."""
             llm_treasure_prompt = PromptTemplate(
                 template=generate_treasure_prompt,
-                input_variables=["adventure_history", "material", "type", "adornment", "era", "power"])
+                input_variables=["material", "type", "adornment", "era", "power"])
 
-            # Lists of possible attributes for each category and randomly selecting attributes for the treasure
-            materials = ["golden", "silver", "crystalline", "jewel-encrusted", "ancient stone"]
+            # Lists of possible attributes for each category
+            materials = [
+                "golden", "silver", "crystalline", "jewel-encrusted", "ancient stone"
+            ]
             types = ["chest", "statue", "amulet", "crown", "sword"]
-            adornments = ["intricate runes", "mystical symbols", "gemstones", "ancient inscriptions", "magical glyphs"]
-            eras = ["Elvish", "Dwarven", "Ancient Human", "Lost Civilization", "Mythical"]
-            powers = ["enigmatic magical aura", "curse of eternal slumber", "blessing of invincibility", "power of foresight", "charm of endless wealth"]
+            adornments = [
+                "intricate runes", "mystical symbols", "gemstones",
+                "ancient inscriptions", "magical glyphs"
+            ]
+            eras = [
+                "Elvish", "Dwarven", "Ancient Human", "Lost Civilization", "Mythical"
+            ]
+            powers = [
+                "enigmatic magical aura", "curse of eternal slumber",
+                "blessing of invincibility", "power of foresight",
+                "charm of endless wealth"
+            ]
 
+            # Randomly selecting attributes for the treasure
             treasure_attributes = {
                 "material": random.choice(materials),
                 "type": random.choice(types),
@@ -166,19 +172,24 @@ class Dungeon:
                 "era": random.choice(eras),
                 "power": random.choice(powers)
             }
-
             self.player.add_to_inventory('treasures', treasure_attributes)
             treasure_chain = LLMChain(prompt=llm_treasure_prompt, llm=dungeon_llm, memory=self.memory)
+            generated_treasure = treasure_chain.run(treasure_attributes)
+
+            llm_chain = LLMChain(prompt=llm_prompt, llm=dungeon_llm, memory=self.memory)
 
             try:
-                generated_treasure = treasure_chain.predict(adventure_history=self.memory.retrieve(), **treasure_attributes)
                 response += generated_treasure
-                response += llm_chain.run(adventure_history=self.conversation_memory.retrieve(),
-                                            encounter=self.history[-1],
+                response += llm_chain.run(encounter=self.history[-1],
                                             treasure=generated_treasure)
                 self.history.append(response)
+                #earned_exp = self.player.award_exp()
+                #self.player.award_exp(earned_exp)
+                #response += f"\nYou Earned:\n{earned_exp} exp"
+
             except Exception as e:
                 response = f"I couldn't generate a response due to the following error: {str(e)}"
+                # Strip the "Human:" string and the rest of the string after it
 
             # if nothing
         if (encounter == "nothing"):
@@ -192,15 +203,17 @@ class Dungeon:
                                             "max_new_tokens": 250
                                         })
 
-            continue_dungeon_prompt = """Describe an {quality} room in detail."""
-            llm_prompt = PromptTemplate(template=continue_dungeon_prompt, input_variables=["quality"])
+            continue_dungeon_prompt = """The previous step in our adventure follows: {history} 
+            What happens next?"""
+            llm_prompt = PromptTemplate(template=continue_dungeon_prompt,
+                                        input_variables=["history"])
 
-            llm_chain = LLMChain(prompt=llm_prompt, llm=dungeon_llm)
+            llm_chain = LLMChain(prompt=llm_prompt, llm=dungeon_llm, memory=self.memory)
             """Generates a llm chain response to the given query."""
 
             try:
 
-                response += llm_chain.run(quality="empty")
+                response += llm_chain.run(self.history[-1])
                 self.history.append(response)
 
             except Exception as e:
