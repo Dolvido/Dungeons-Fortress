@@ -1,8 +1,16 @@
 import random
+import firebase_admin
+from firebase_admin import credentials, firestore
+import json
+
 
 class Player:
 
-    def __init__(self):
+    def __init__(self, name, db):
+        self.name = name
+        self.db = db
+        self.level = 1
+        self.experience = 0
         self.exp = 0
         self.doubloons = 0
         self.health = 100
@@ -65,3 +73,92 @@ class Player:
         self.doubloons = 0
         self.health = 100
         self.inventory = {}
+
+    def gain_experience(self, amount):
+        self.experience += amount
+        print(f"You gained {amount} experience points!")
+        # Save player state to Firestore whenever it changes
+        self.save_player()
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'level': self.level,
+            'experience': self.experience,
+            'exp': self.exp,
+            'doubloons': self.doubloons,
+            'health': self.health,
+            'max_base_damage': self.max_base_damage,
+            'inventory': self.inventory,
+        }
+
+    @staticmethod
+    def from_dict(data, db):
+        player = Player(data['name'], db)
+        player.level = data['level']
+        player.experience = data['experience']
+        player.exp = data['exp']
+        player.doubloons = data['doubloons']
+        player.health = data['health']
+        player.max_base_damage = data['max_base_damage']
+        player.inventory = data['inventory']
+        return player
+    
+    def save_player(self):
+        player_ref = self.db.collection('players').document(self.name)
+        player_ref.set(self.to_dict(), merge=True)
+
+    @classmethod
+    async def load_player(self, cls, player_name, db):
+        # Asynchronously load player data from the database
+        doc_ref = self.db.collection('players').document(player_name)
+        treasure_ref = self.db.collection('treasures').document(player_name)  # Reference to the player's treasures in the database
+        doc = await doc_ref.get()
+        treasure_doc = await treasure_ref.get()  # Asynchronously get the player's treasures
+
+        if doc.exists:
+            player_data = doc.to_dict()
+
+            # Create a Player object with the fetched data
+            player = cls(name=player_name, db=db)
+            player.level = player_data.get('level', 1)
+            player.experience = player_data.get('experience', 0)
+            player.exp = player_data.get('exp', 0)
+            player.doubloons = player_data.get('doubloons', 0)
+            player.health = player_data.get('health', 100)
+            player.max_base_damage = player_data.get('max_base_damage', 10)
+
+            # If the treasure document exists, load the player's treasures from the database
+            if treasure_doc.exists:
+                treasures_data = treasure_doc.to_dict()
+                print(f"Treasures Data from DB: {treasures_data}")  # Debug print
+
+                player.inventory = treasures_data.get('treasures', [])
+                print(f"Player's Inventory after Assignment: {player.inventory}")  # Debug print
+            else:
+                player.inventory = []
+                print("Treasure Document does not exist.")  # Debug print
+
+            return player
+        else:
+            print(f"No player found with the name {player_name}")
+            return None
+    
+    async def get_stats_from_db(self):
+        player_ref = self.db.collection('players').document(self.name)
+        player_doc = await player_ref.get()
+        if player_doc.exists:
+            return player_doc.to_dict()
+        else:
+            return None
+
+    def add_to_inventory(self, category, item):
+        """
+        Add the item to the player's inventory under the given category.
+        """
+        if category not in self.inventory:
+            self.inventory[category] = []
+        self.inventory[category].append(item)
+
+
+

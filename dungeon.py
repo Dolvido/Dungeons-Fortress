@@ -7,15 +7,18 @@ from langchain.chains import ConversationChain, llm_requests
 from langchain.memory import ConversationBufferMemory
 from langchain.memory import ChatMessageHistory
 
+from firebase_admin import firestore
 
+db = firestore.client()
 
 # Dungeon class to manage dungeon state and interactions
 class Dungeon:
 
-    def __init__(self, player):
+    def __init__(self, player, db):
         print("init dungeon class")
         self.player = player
         self.history = []
+        self.db = db
         #self.repo_id_llm = "mosaicml/mpt-7b-instruct"
         self.repo_id_llm = "tiiuae/falcon-7b-instruct"  # See https://huggingface.co/models?pipeline_tag=text-generation&sort=downloads for some other options
         self.depth = 0
@@ -27,11 +30,11 @@ class Dungeon:
         self.memory = ConversationBufferMemory(memory_key="adventure_history")
         #self.memory.save_context({"input", "The hero enters the dungeon."}, {"output", "The hero enters the dungeon."})
 
-
-
-
     def start(self):
         print("start_dungeon")
+
+        self.depth = 0
+        self.threat_level = 1
 
         # Randomize the temperature between 0.1 and 1.0 to get a new adventure each time
         random_temperature = random.uniform(0.01, 1.0)
@@ -84,6 +87,7 @@ class Dungeon:
 
         # if combat encounter
         if (encounter == "combat"):
+            print("Combat event triggered")
             response += "\nCOMBAT ENCOUNTER\n"
             random_temperature = random.uniform(0.01, 1.0)
 
@@ -130,29 +134,55 @@ class Dungeon:
             except Exception as e:
                 response = f"I couldn't generate a response due to the following error: {str(e)}"
 
-        # if treasure encounter
-        if (encounter == "treasure"):
+            # If treasure encounter
+        if encounter == "treasure":
+            print("Treasure event triggered")
             response += "\nTREASURE ROOM\n"
             random_temperature = random.uniform(0.01, 1.0)
 
-            dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
-                                            model_kwargs={
-                                                "temperature": random_temperature,
-                                                "max_new_tokens": 250
-                                            })
+            dungeon_llm = HuggingFaceHub(
+                repo_id=self.repo_id_llm,
+                model_kwargs={
+                    "temperature": random_temperature,
+                    "max_new_tokens": 250
+                }
+            )
 
-            treasure_encounter_prompt = """{adventure_history} A glimmer of light pierces the overwhelming darkness of the dungeon. Our hero, intrigued and hopeful, follows the gleaming trail. Hidden away in the obscurity, a majestic treasure awaits; {treasure} a testament to the lost civilization that once thrived here, now promising power and wealth.
-
-        Describe the next events in detail."""
-            llm_prompt = PromptTemplate(template=treasure_encounter_prompt,
-                                        input_variables=["adventure_history", "treasure"])
-
-            generate_treasure_prompt = """{adventure_history} In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {material} {type} adorned with {adornment}, an artifact of the {era} era, believed to possess {power}."""
+            #GENERATE TREASURE
+            generate_treasure_prompt = "{adventure_history} In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {treasure_assembled_string}."
             llm_treasure_prompt = PromptTemplate(
                 template=generate_treasure_prompt,
-                input_variables=["adventure_history", "material", "type", "adornment", "era", "power"])
+                input_variables=["adventure_history", "treasure_assembled_string"]
+            )
+             # Lists of possible attributes for each category and randomly selecting attributes for the treasure
+            materials = ["golden", "silver", "crystalline", "jewel-encrusted", "ancient stone"]
+            types = ["chest", "statue", "amulet", "crown", "sword"]
+            adornments = ["intricate runes", "mystical symbols", "gemstones", "ancient inscriptions", "magical glyphs"]
+            eras = ["Elvish", "Dwarven", "Ancient Human", "Lost Civilization", "Mythical"]
+            powers = ["enigmatic magical aura", "curse of eternal slumber", "blessing of invincibility", "power of foresight", "charm of endless wealth"]
 
-            # Lists of possible attributes for each category and randomly selecting attributes for the treasure
+            treasure_attributes = {
+                "material": random.choice(materials),
+                "type": random.choice(types),
+                "adornment": random.choice(adornments),
+                "era": random.choice(eras),
+                "power": random.choice(powers)
+            }
+            treasure_assembled_string = f'{treasure_attributes["material"]} {treasure_attributes["type"]} adorned with {treasure_attributes["adornment"]}, an artifact of the {treasure_attributes["era"]} era, believed to possess {treasure_attributes["power"]}'
+
+            # Add the treasure to the player's inventory
+            self.player.add_to_inventory('treasures', treasure_attributes)
+
+            # Store the treasure in the database
+            self.add_treasure_to_db(treasure_attributes)
+
+            # ... (continue with the existing code to generate the treasure description and add it to the response)
+
+            llm_treasure_prompt = PromptTemplate(
+                template=generate_treasure_prompt,
+                input_variables=["adventure_history", "treasure_assembled_string"]
+            )
+
             materials = ["golden", "silver", "crystalline", "jewel-encrusted", "ancient stone"]
             types = ["chest", "statue", "amulet", "crown", "sword"]
             adornments = ["intricate runes", "mystical symbols", "gemstones", "ancient inscriptions", "magical glyphs"]
@@ -167,21 +197,33 @@ class Dungeon:
                 "power": random.choice(powers)
             }
 
-            self.player.add_to_inventory('treasures', treasure_attributes)
+            treasure_assembled_string = f'{treasure_attributes["material"]} {treasure_attributes["type"]} adorned with {treasure_attributes["adornment"]}, an artifact of the {treasure_attributes["era"]} era, believed to possess {treasure_attributes["power"]}'
+
+            # Create language model chain and run against our prompt
             treasure_chain = LLMChain(prompt=llm_treasure_prompt, llm=dungeon_llm, memory=self.memory)
 
             try:
-                generated_treasure = treasure_chain.predict(adventure_history=self.memory.retrieve(), **treasure_attributes)
+                generated_treasure = treasure_chain.predict(treasure_assembled_string=treasure_assembled_string)
                 response += generated_treasure
-                response += llm_chain.run(adventure_history=self.conversation_memory.retrieve(),
-                                            encounter=self.history[-1],
-                                            treasure=generated_treasure)
+                print(generated_treasure)
+                treasure_encounter_prompt = """{adventure_history} A glimmer of light pierces the overwhelming darkness of the dungeon. Our hero, intrigued and hopeful, follows the gleaming trail. Hidden away in the obscurity, a majestic treasure awaits; {treasure} a testament to the lost civilization that once thrived here, now promising power and wealth.
+
+                Describe the next events in detail."""
+                llm_prompt = PromptTemplate(
+                    template=treasure_encounter_prompt,
+                    input_variables=["adventure_history", "treasure"]
+                )
+    
+                llm_chain = LLMChain(prompt=llm_prompt, llm=dungeon_llm, memory=self.memory)
+                response += llm_chain.predict(treasure=generated_treasure)
                 self.history.append(response)
+    
             except Exception as e:
                 response = f"I couldn't generate a response due to the following error: {str(e)}"
 
             # if nothing
         if (encounter == "nothing"):
+            print("Nothing event triggered")
             response += "\nEMPTY ROOM\n"
             # Randomize the temperature between 0.1 and 1.0 to get a new adventure each time
             random_temperature = random.uniform(0.01, 1.0)
@@ -261,3 +303,52 @@ class Dungeon:
         self.history = []
         self.player.reset_player()  # You need to add a reset_player method in the Player class
 
+    def to_dict(self):
+        return {
+            'depth': self.depth,
+            'threat_level': self.threat_level,
+            'max_threat_level': self.max_threat_level,
+            'threat_level_multiplier': self.threat_level_multiplier,
+            'history': self.history,
+        }
+
+    @staticmethod
+    def from_dict(data, player, db):
+        dungeon = Dungeon(player, db)
+        dungeon.depth = data['depth']
+        dungeon.threat_level = data['threat_level']
+        dungeon.max_threat_level = data['max_threat_level']
+        dungeon.threat_level_multiplier = data['threat_level_multiplier']
+        dungeon.history = data['history']
+        return dungeon
+    
+    def save_dungeon(self):
+        dungeon_ref = self.db.collection('dungeons').document(self.player.name)
+        dungeon_ref.set(self.to_dict(), merge=True)
+
+    @classmethod
+    def load_dungeon(cls, player, db):
+        doc_ref = db.collection('dungeons').document(player.name)
+        doc = doc_ref.get()
+        if doc.exists:
+            return Dungeon.from_dict(doc.to_dict(), player, db)
+        return None
+
+
+    def add_treasure_to_db(self, treasure):
+        # The 'treasures' collection stores all treasures
+        # Documents are identified by player ID and contain an array of treasures
+        treasures_ref = db.collection('treasures').document(self.player.name)
+
+        # Fetch the current document
+        doc = treasures_ref.get()
+
+        if doc.exists:
+            # Update the document with the new treasure
+            # This code adds the new treasure to an array of treasures in the document
+            treasures = doc.to_dict().get('treasures', [])
+            treasures.append(treasure)
+            treasures_ref.update({'treasures': treasures})
+        else:
+            # If the document does not exist, create it
+            treasures_ref.set({'treasures': [treasure]})
