@@ -4,7 +4,7 @@ from dotenv import load_dotenv, find_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-cred = credentials.Certificate('./firebase.json')
+cred = credentials.Certificate('../firebase.json')
 firebase_admin.initialize_app(cred)
 
 # Ensure you're using the asynchronous Firestore client
