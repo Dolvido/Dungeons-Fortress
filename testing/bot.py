@@ -49,7 +49,7 @@ async def start(interaction, db):
         player.dungeon = dungeon  
         response = dungeon.start()
         player.save_player()
-        dungeon.save_dungeon()
+        #dungeon.save_dungeon()
         await interaction.followup.send(content=response)
 
     except Exception as e:
@@ -65,7 +65,7 @@ async def continue_command(interaction, db):
         player.dungeon = dungeon  
         response = dungeon.continue_adventure()
         player.save_player()
-        dungeon.save_dungeon()
+        #dungeon.save_dungeon()
         await interaction.followup.send(content=response)
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -81,7 +81,7 @@ async def flee(interaction, db):
         response = dungeon.flee()
         player.delete_treasures()
         player.save_player()
-        dungeon.save_dungeon()
+        #dungeon.save_dungeon()
         await interaction.followup.send(content=response)
     except Exception as e:
         print(f"An error occurred: {e}")
