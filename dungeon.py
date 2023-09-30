@@ -27,6 +27,7 @@ class Dungeon:
         dungeon_ref = self.db.collection('dungeons').document(self.player.name)
         dungeon_ref.delete()
 
+
     def start(self):
         self.depth = 0
         self.threat_level = 1
@@ -56,6 +57,7 @@ class Dungeon:
         self.depth += 1
         damage_taken = 0
         response = ""
+        print('%s is continuing the dungeon adventure at depth %s', self.player.name, str(self.depth))
 
         self.print_threat_level()
 
@@ -72,12 +74,15 @@ class Dungeon:
         )[0]
 
         if (encounter == "combat"):
+            print('encountered a combat encounter: ', self.player.name)
             response += self.combat_operation(db)
 
         if encounter == "treasure":
+            print('encountered a treasure room: ', self.player.name)
             response += self.treasure_operation(db)
 
         if (encounter == "nothing"):
+            print('encountered an empty room: ', self.player.name)
             response += self.no_encounter_operation(db)
 
         self.end_of_continue_adventure_phase(db)
@@ -167,9 +172,6 @@ class Dungeon:
             }
         )
 
-        generate_treasure_prompt = "{adventure_history} In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {treasure_assembled_string}."
-        llm_treasure_prompt = PromptTemplate(template=generate_treasure_prompt,
-                                            input_variables=["adventure_history", "treasure_assembled_string"])
         treasure_attributes = {
             "material": random.choice(["golden", "silver", "crystalline", "jewel-encrusted", "ancient stone"]),
             "type": random.choice(["chest", "statue", "amulet", "crown", "sword"]),
@@ -177,11 +179,16 @@ class Dungeon:
             "era": random.choice(["Elvish", "Dwarven", "Ancient Human", "Lost Civilization", "Mythical"]),
             "power": random.choice(["enigmatic magical aura", "curse of eternal slumber", "blessing of invincibility", "power of foresight", "charm of endless wealth"])
         }
+
         treasure_assembled_string = f'{treasure_attributes["material"]} {treasure_attributes["type"]} adorned with {treasure_attributes["adornment"]}, an artifact of the {treasure_attributes["era"]} era, believed to possess {treasure_attributes["power"]}'
+        
+        generate_treasure_prompt = "{adventure_history} In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {treasure}."  # Changed {treasure_assembled_string} to {treasure}
+        llm_treasure_prompt = PromptTemplate(template=generate_treasure_prompt,
+                                            input_variables=["adventure_history", "treasure"])  # Changed "treasure_assembled_string" to "treasure"
 
         # Create language model chain and run against our prompt
         treasure_chain = LLMChain(prompt=llm_treasure_prompt, llm=dungeon_llm, memory=self.memory)
-        generated_treasure = treasure_chain.predict(treasure_assembled_string=treasure_assembled_string)
+        generated_treasure = treasure_chain.predict(treasure=treasure_assembled_string)  # Changed {treasure_assembled_string={treasure_assembled_string}} to treasure=treasure_assembled_string
 
         # Add the treasure to the player's inventory and database
         self.player.add_to_inventory('treasures', treasure_attributes, db)

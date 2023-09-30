@@ -75,6 +75,8 @@ class Player:
         if category not in self.inventory:
             self.inventory[category] = []
         self.inventory[category].append(item)
+        self.save_player()
+        
 
     async def get_inventory(self):
         await self.load_player_inventory()  # Load the inventory from the database
