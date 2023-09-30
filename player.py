@@ -153,10 +153,10 @@ class Player:
         player_ref.set(self.to_dict(), merge=True)
 
     @classmethod
-    async def load_player(cls, player_name, db):
+    def load_player(cls, player_name, db):
         # Asynchronously load player data from the database
         doc_ref = db.collection('players').document(player_name)
-        doc = await doc_ref.get()
+        doc = doc_ref.get()
 
         if doc.exists:
             player_data = doc.to_dict()
@@ -170,17 +170,17 @@ class Player:
             player.health = player_data.get('health', 100)
             player.max_base_damage = player_data.get('max_base_damage', 10)
 
-            await player.load_player_inventory(player_name)  # Load player's inventory
+            player.load_player_inventory(player_name)  # Load player's inventory
 
             return player
         else:
             print(f"No player found with the name {player_name}")
             return None
 
-    async def load_player_inventory(self):
-        # Asynchronously load player's treasures from the database
+    def load_player_inventory(self):
+        # Load player's treasures from the database
         treasure_ref = self.db.collection('treasures').document(self.name)
-        treasure_doc = treasure_ref.get()  # Removed 'await'
+        treasure_doc = treasure_ref.get()
 
         if treasure_doc.exists:
             treasures_data = treasure_doc.to_dict()
@@ -190,6 +190,8 @@ class Player:
         else:
             self.inventory = []
             print("Treasure Document does not exist.")  # Debug print
+
+
 
     async def get_stats_from_db(self):
         player_ref = self.db.collection('players').document(self.name)
