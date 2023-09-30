@@ -58,15 +58,9 @@ class Player:
             self.inventory[category] = []
         self.inventory[category].append(item)
 
-    def view_inventory(self):
-        if not any(self.inventory.values()):
-            return "Your inventory is empty."
-        inventory_items = []
-        for category, items in self.inventory.items():
-            if items:
-                items_str = [str(item) for item in items]
-                inventory_items.append(f"{category.capitalize()}: {', '.join(items_str)}")
-        return '\n'.join(inventory_items)
+    async def get_inventory(self):
+        await self.load_player_inventory()  # Load the inventory from the database
+        return self.inventory
 
     def reset_player(self):
         self.exp = 0
@@ -109,12 +103,10 @@ class Player:
         player_ref.set(self.to_dict(), merge=True)
 
     @classmethod
-    async def load_player(self, cls, player_name, db):
+    async def load_player(cls, player_name, db):
         # Asynchronously load player data from the database
-        doc_ref = self.db.collection('players').document(player_name)
-        treasure_ref = self.db.collection('treasures').document(player_name)  # Reference to the player's treasures in the database
+        doc_ref = db.collection('players').document(player_name)
         doc = await doc_ref.get()
-        treasure_doc = await treasure_ref.get()  # Asynchronously get the player's treasures
 
         if doc.exists:
             player_data = doc.to_dict()
@@ -128,22 +120,27 @@ class Player:
             player.health = player_data.get('health', 100)
             player.max_base_damage = player_data.get('max_base_damage', 10)
 
-            # If the treasure document exists, load the player's treasures from the database
-            if treasure_doc.exists:
-                treasures_data = treasure_doc.to_dict()
-                print(f"Treasures Data from DB: {treasures_data}")  # Debug print
-
-                player.inventory = treasures_data.get('treasures', [])
-                print(f"Player's Inventory after Assignment: {player.inventory}")  # Debug print
-            else:
-                player.inventory = []
-                print("Treasure Document does not exist.")  # Debug print
+            await player.load_player_inventory(player_name)  # Load player's inventory
 
             return player
         else:
             print(f"No player found with the name {player_name}")
             return None
-    
+
+    async def load_player_inventory(self):
+        # Asynchronously load player's treasures from the database
+        treasure_ref = self.db.collection('treasures').document(self.name)
+        treasure_doc = treasure_ref.get()  # Removed 'await'
+
+        if treasure_doc.exists:
+            treasures_data = treasure_doc.to_dict()
+            print(f"Treasures Data from DB: {treasures_data}")  # Debug print
+            self.inventory = treasures_data.get('treasures', [])
+            print(f"Player's Inventory after Assignment: {self.inventory}")  # Debug print
+        else:
+            self.inventory = []
+            print("Treasure Document does not exist.")  # Debug print
+
     async def get_stats_from_db(self):
         player_ref = self.db.collection('players').document(self.name)
         player_doc = await player_ref.get()

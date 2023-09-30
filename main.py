@@ -1,5 +1,6 @@
 import os
 import discord
+from discord import Embed
 from dotenv import load_dotenv, find_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -22,8 +23,7 @@ client = discord.Client(intents=intents)
 
     
 async def send_message(message, response):
-    # Append user ID to the response for debugging
-    response = f"User ID {message.author.id}: {response}"
+    response = f"{message.author.name}: {response}"
     message_chunks = [response[i:i + 2000] for i in range(0, len(response), 2000)]
     for chunk in message_chunks:
         await message.channel.send(chunk)
@@ -89,15 +89,25 @@ async def on_message(message):
         player.save_player()  # Save updated player data to the database
 
     elif message.content.startswith('/inventory'):
+        player_inv = await Player.load_player_inventory(player)  # Load player's inventory from the database
+            
         if not player:
             await send_message(message, "You need to start a dungeon adventure first!")
             return
+            
         inventory = player.view_inventory()
-        response = f"Your Inventory:\n{inventory}"
-        await send_message(message, response)
+            
+        if "empty" in inventory:
+            await send_message(message, inventory)
+        else:
+            embed = Embed(title="Your Inventory", description=inventory, color=0x00ff00)
+            await message.channel.send(embed=embed)
+
 try:
     if not TOKEN:
         raise Exception("Please add your token to the environment variables.")
     client.run(TOKEN)
 except discord.HTTPException as e:
     print(f"An error occurred: {e}")
+
+
