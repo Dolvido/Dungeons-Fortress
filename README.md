@@ -37,5 +37,4 @@ python main.py
 
 Go to the Discord server and interact with the bot to start your adventure!
 
-#Contributing
-Feel free to fork this project and enhance the game! Add new features, improve the storytelling, or integrate more advanced language models to make the adventure even more exciting.
+All rights reserved.
