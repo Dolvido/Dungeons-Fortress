@@ -145,13 +145,86 @@ class Dungeon:
         return combat_narrative
 
     def treasure_operation(self):
-        pass
+        """
+        Handles the operation where the adventure enters a treasure room.
+        """
+        random_temperature = random.uniform(0.01, 1.0)
+
+        dungeon_llm = HuggingFaceHub(
+            repo_id=self.repo_id_llm,
+            model_kwargs={
+                "temperature": random_temperature,
+                "max_new_tokens": 250
+            }
+        )
+
+        generate_treasure_prompt = "{adventure_history} In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {treasure_assembled_string}."
+        llm_treasure_prompt = PromptTemplate(template=generate_treasure_prompt,
+                                            input_variables=["adventure_history", "treasure_assembled_string"])
+        treasure_attributes = {
+            "material": random.choice(["golden", "silver", "crystalline", "jewel-encrusted", "ancient stone"]),
+            "type": random.choice(["chest", "statue", "amulet", "crown", "sword"]),
+            "adornment": random.choice(["intricate runes", "mystical symbols", "gemstones", "ancient inscriptions", "magical glyphs"]),
+            "era": random.choice(["Elvish", "Dwarven", "Ancient Human", "Lost Civilization", "Mythical"]),
+            "power": random.choice(["enigmatic magical aura", "curse of eternal slumber", "blessing of invincibility", "power of foresight", "charm of endless wealth"])
+        }
+        treasure_assembled_string = f'{treasure_attributes["material"]} {treasure_attributes["type"]} adorned with {treasure_attributes["adornment"]}, an artifact of the {treasure_attributes["era"]} era, believed to possess {treasure_attributes["power"]}'
+
+        # Create language model chain and run against our prompt
+        treasure_chain = LLMChain(prompt=llm_treasure_prompt, llm=dungeon_llm, memory=self.memory)
+        generated_treasure = treasure_chain.predict(treasure_assembled_string=treasure_assembled_string)
+
+        # Add the treasure to the player's inventory and database
+        self.player.add_to_inventory('treasures', treasure_attributes)
+        self.add_treasure_to_db(treasure_attributes)
+
+        response = "\nTREASURE ROOM\n" + generated_treasure
+        return response
 
     def no_encounter_operation(self):
-        pass
+        """
+        Handles the operation where the adventure enters an empty room.
+        """
+        random_temperature = random.uniform(0.01, 1.0)
+
+        dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
+                                    model_kwargs={
+                                        "temperature": random_temperature,
+                                        "max_new_tokens": 250
+                                    })
+
+        continue_dungeon_prompt = "{adventure_history} Describe an {quality} room in detail."
+        llm_prompt = PromptTemplate(template=continue_dungeon_prompt, input_variables=["adventure_history", "quality"])
+
+        llm_chain = LLMChain(prompt=llm_prompt, llm=dungeon_llm, memory=self.memory)
+
+        try:
+            generated_description = llm_chain.run(quality="empty")
+            self.history.append(generated_description)
+
+        except Exception as e:
+            generated_description = f"I couldn't generate a description due to the following error: {str(e)}"
+
+        response = "\nEMPTY ROOM\n" + generated_description
+        return response
 
     def end_of_continue_adventure_phase(self):
-        pass
+        """
+        Called at the end of continue_adventure function to update threat level and dungeon state in the database.
+        """
+        print("end_of_continue_adventure_phase")
+        self.update_threat_level()
+        self.save_dungeon()
 
     def update_threat_level(self):
-        pass
+        """
+        Update threat level exponentially and cap the threat level to the maximum value.
+        """
+        print("update_threat_level")
+        self.threat_level *= self.threat_level_multiplier
+        print("calculated threat level: " + str(self.threat_level))
+        self.threat_level = min(self.threat_level, self.max_threat_level)
+        dungeon_ref = self.db.collection('dungeons').document(self.player.name)
+        dungeon_ref.update({'threat_level': self.threat_level})
+
+
