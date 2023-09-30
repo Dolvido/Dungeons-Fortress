@@ -90,13 +90,59 @@ class Dungeon:
     # Implement the remaining needed methods as per the task and recorrecting where needed
 
     def combat_operation(self):
-        pass
+        # Generate random temperature variable for the language model chain
+        random_temperature = random.uniform(0.01, 1.0)
 
-    def get_victory_narrative(self, response, enemy_description):
-        pass
+        dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
+                                    model_kwargs={
+                                        "temperature": random_temperature,
+                                        "max_new_tokens": 250
+                                    })
+    
+        generate_enemy_prompt = "{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat at power level {enemy_threat_level}. Describe the enemy that emerges from the shadows to challenge the hero."
+        llm_enemy_prompt = PromptTemplate(template=generate_enemy_prompt, input_variables=["adventure_history", "enemy_threat_level"])
 
-    def get_defeat_narrative(self, response, enemy_description):
-        pass
+        enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm, memory=self.memory)
+        enemy_description = enemy_chain.predict(enemy_threat_level=self.threat_level)
+        combat_status, combat_message = self.player.handle_combat(self.threat_level)
+
+        if combat_status == "won":
+            combat_narrative = self.get_victory_narrative(enemy_description)
+        else:  # if the combat_status is "lost"
+            combat_narrative = self.get_defeat_narrative(enemy_description)
+
+        response = f"\nCOMBAT ENCOUNTER\n"
+        response += enemy_description
+        response += combat_narrative
+        response += combat_message
+
+        return response
+
+    def get_victory_narrative(self, enemy_description):
+        random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
+
+        dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
+                                        model_kwargs={
+                                            "temperature": random_temperature,
+                                            "max_new_tokens": 250
+                                        })
+
+        victory_prompt = "{adventure_history} The hero, with unmatched bravery and skill, faces the {enemy_description}. Describe the epic moment the hero vanquishes the beast."
+        llm_victory_prompt = PromptTemplate(template=victory_prompt, input_variables=["adventure_history", "enemy_description"])
+
+        victory_chain = LLMChain(prompt=llm_victory_prompt, llm=dungeon_llm, memory=self.memory)
+        combat_narrative = victory_chain.predict(adventure_history=response, enemy_description=enemy_description)
+    
+        return combat_narrative
+
+    def get_defeat_narrative(self, enemy_description):
+        defeat_prompt = "{adventure_history} Despite the hero's valiant efforts, the {enemy_description} proves to be too powerful. Describe the tragic moment the hero is defeated by the beast."
+        llm_defeat_prompt = PromptTemplate(template=defeat_prompt, input_variables=["adventure_history", "enemy_description"])
+
+        defeat_chain = LLMChain(prompt=llm_defeat_prompt, llm=dungeon_llm, memory=self.memory)
+        combat_narrative = defeat_chain.predict(adventure_history=response, enemy_description=enemy_description)
+    
+        return combat_narrative
 
     def treasure_operation(self):
         pass
