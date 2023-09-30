@@ -43,7 +43,7 @@ async def start(interaction, db):
 
         player.dungeon = dungeon  
         response = dungeon.start()
-        player.save_player()
+        player.save_player(db)
         dungeon.save_dungeon()
         await interaction.followup.send(content=response)
     except Exception as e:

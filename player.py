@@ -60,10 +60,10 @@ class Player:
         self.dungeon.delete_dungeon()
         return "You have fled the dungeon. You have lost all your treasures and doubloons."
 
-    def clear_treasures(self):
+    def clear_treasures(self, db):
         # Get the reference to the player's document in Firestore
         # Adjust the path according to your Firestore structure
-        player_doc_ref = self.db.collection('players').document(self.name)
+        player_doc_ref = db.collection('players').document(self.name)
 
         # Update the player's document to clear the treasures field
         # This assumes the treasures are stored in a field named 'treasures'
@@ -92,7 +92,7 @@ class Player:
         # Save player state to Firestore whenever it changes
         self.save_player()
    
-    def handle_combat(self, enemy_threat_level):
+    def handle_combat(self, enemy_threat_level, db):
         # Calculate combat outcome
         combat_outcome = self.max_base_damage - enemy_threat_level  # Simplified for example
     
@@ -104,7 +104,7 @@ class Player:
         self.award_exp(enemy_threat_level)
     
         # Update player's health and experience in the database
-        player_ref = self.db.collection('players').document(self.name)
+        player_ref = db.collection('players').document(self.name)
         player_ref.update({'health': self.health, 'experience': self.experience})
     
         # Check if player won or lost
@@ -118,9 +118,9 @@ class Player:
     def award_exp(self, exp):
         self.experience += exp
 
-    def delete_treasures(self):
+    def delete_treasures(self, db):
         print(f"Deleting treasures for player {self.name}")
-        treasures_ref = self.db.collection('treasures').document(self.name)
+        treasures_ref = db.collection('treasures').document(self.name)
         treasures_ref.delete()
 
         
@@ -138,7 +138,7 @@ class Player:
 
     @staticmethod
     def from_dict(data, db):
-        player = Player(data['name'], db)
+        player = Player(data['name'])
         player.level = data['level']
         player.experience = data['experience']
         player.exp = data['exp']
@@ -148,8 +148,8 @@ class Player:
         player.inventory = data['inventory']
         return player
     
-    def save_player(self):
-        player_ref = self.db.collection('players').document(self.name)
+    def save_player(self, db):
+        player_ref = db.collection('players').document(self.name)
         player_ref.set(self.to_dict(), merge=True)
 
     @classmethod
@@ -162,7 +162,7 @@ class Player:
             player_data = doc.to_dict()
 
             # Create a Player object with the fetched data
-            player = cls(name=player_name, db=db)
+            player = cls(name=player_name)
             player.level = player_data.get('level', 1)
             player.experience = player_data.get('experience', 0)
             player.exp = player_data.get('exp', 0)
@@ -170,16 +170,19 @@ class Player:
             player.health = player_data.get('health', 100)
             player.max_base_damage = player_data.get('max_base_damage', 10)
 
-            player.load_player_inventory(player_name)  # Load player's inventory
+            player.load_player_inventory(db)  # Load player's inventory
 
             return player
         else:
             print(f"No player found with the name {player_name}")
-            return None
+            # make an entry in the database for new player
+            player = cls(name=player_name)
+            player.save_player(db)
+            return player
 
-    def load_player_inventory(self):
+    def load_player_inventory(self, db):
         # Load player's treasures from the database
-        treasure_ref = self.db.collection('treasures').document(self.name)
+        treasure_ref = db.collection('treasures').document(self.name)
         treasure_doc = treasure_ref.get()
 
         if treasure_doc.exists:
@@ -193,8 +196,8 @@ class Player:
 
 
 
-    async def get_stats_from_db(self):
-        player_ref = self.db.collection('players').document(self.name)
+    async def get_stats_from_db(self, db):
+        player_ref = db.collection('players').document(self.name)
         player_doc = await player_ref.get()
         if player_doc.exists:
             return player_doc.to_dict()
