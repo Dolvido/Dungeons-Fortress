@@ -26,7 +26,7 @@ class Dungeon:
         #self.repo_id_llm = "mosaicml/mpt-7b-instruct"
         self.repo_id_llm = "tiiuae/falcon-7b-instruct"  # See https://huggingface.co/models?pipeline_tag=text-generation&sort=downloads for some other options
         self.depth = 0
-        self.threat_level = 1
+        self.threat_level = None
         self.max_threat_level = 5
         self.threat_level_multiplier = 1.5
         self.chat_history = ChatMessageHistory()
@@ -72,7 +72,6 @@ class Dungeon:
         response = ""
 
         # Calculate threat level
-        self.update_threat_level()
         print(f"Threat Level: {self.threat_level}")
         response += f"\nThreat Level: {self.threat_level}"
         
@@ -262,16 +261,22 @@ class Dungeon:
             except Exception as e:
                 response = f"I couldn't generate a response due to the following error: {str(e)}"
 
-        # end of continue_adventure            
+        # end of continue_adventure  
+        self.end_of_continue_adventure_phase()  
         return response
 
-    def update_threat_level(self):
-        print("update_threat_level")
+    def end_of_continue_adventure_phase(self):
+        print("end_of_continue_adventure_phase")
+        self.update_threat_level()
         # Update threat level exponentially
-        self.threat_level *= self.threat_level_multiplier  # Adjust the multiplier as needed
+        #self.threat_level *= self.threat_level_multiplier  # Adjust the multiplier as needed
 
         # Cap the threat level to the maximum value
-        self.threat_level = min(self.threat_level, self.max_threat_level)
+        #self.threat_level = min(self.threat_level, self.max_threat_level)
+        self.depth += 1
+
+        # Update the dungeon state in the database
+        self.save_dungeon()
 
 
     def flee(self):
@@ -306,6 +311,18 @@ class Dungeon:
 
         # You can also return the response if needed
         return response
+    
+    def update_threat_level(self):
+        print("update_threat_level")
+        # Update threat level exponentially
+        self.threat_level *= self.threat_level_multiplier  # Adjust the multiplier as needed
+        print("calculated threat level: " + str(self.threat_level))
+        # Cap the threat level to the maximum value
+        self.threat_level = min(self.threat_level, self.max_threat_level)
+
+        # Update threat_level in firestore
+        dungeon_ref = self.db.collection('dungeons').document(self.player.name)
+        dungeon_ref.update({'threat_level': self.threat_level})
 
     def reset_dungeon(self):
         print("Resetting dungeon...")
@@ -332,6 +349,7 @@ class Dungeon:
         return dungeon
     
     def save_dungeon(self):
+        print(self.to_dict())
         dungeon_ref = self.db.collection('dungeons').document(self.player.name)
         dungeon_ref.set(self.to_dict(), merge=True)
 
