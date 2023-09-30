@@ -227,4 +227,33 @@ class Dungeon:
         dungeon_ref = self.db.collection('dungeons').document(self.player.name)
         dungeon_ref.update({'threat_level': self.threat_level})
 
+    @staticmethod
+    def load_dungeon(player, db):
+        dungeon_data = db.collection('dungeons').document(player.name).get()
+        if dungeon_data.exists:
+            data = dungeon_data.to_dict()
+            d = Dungeon(player, db)
+            
+            d.repo_id_llm = data.get('repo_id_llm')
+            d.depth = data.get('depth')
+            d.threat_level = data.get('threat_level')
+            d.max_threat_level = data.get('max_threat_level')
+            d.threat_level_multiplier = data.get('threat_level_multiplier')
+            
+            return d
+        else:
+            return None
+
+    def save_dungeon(self, db):
+        data = {
+            'repo_id_llm': self.repo_id_llm,
+            'depth' : self.depth,
+            'threat_level' : self.threat_level,
+            'max_threat_level' : self.max_threat_level,
+            'threat_level_multiplier' : self.threat_level_multiplier
+        }
+        
+        db.collection('dungeons').document(self.player.name).set(data)
+
+    ... # The rest of your methods remain unchanged
 

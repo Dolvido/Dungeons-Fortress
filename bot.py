@@ -34,32 +34,31 @@ async def start(interaction, db):
         await interaction.response.defer()
         player = Player.load_player(interaction.user.name, db)
         if not player:
-            # instantiate a new player object
             player = Player(interaction.user.name)
-        
-        dungeon = Dungeon.load_dungeon(player)
+
+        dungeon = Dungeon.load_dungeon(player, db)
         if not dungeon:
-            dungeon = Dungeon(player)
+            dungeon = Dungeon(player, db)
 
         player.dungeon = dungeon  
         response = dungeon.start()
         player.save_player(db)
-        dungeon.save_dungeon()
+        dungeon.save_dungeon(db)     # Added the db argument
         await interaction.followup.send(content=response)
     except Exception as e:
         print(f"An error occurred: {e}")
         error_message = "An error occurred while starting the dungeon. Please try again later."
         await interaction.followup.send(content=error_message)
 
-async def continue_command(interaction):
+async def continue_command(interaction, db):
     try:
         await interaction.response.defer()
-        player = Player.load_player(interaction.user.name)
-        dungeon = Dungeon.load_dungeon(player)
+        player = Player.load_player(interaction.user.name, db)
+        dungeon = Dungeon.load_dungeon(player, db)
         player.dungeon = dungeon  
         response = dungeon.continue_adventure()
-        player.save_player()
-        dungeon.save_dungeon()
+        player.save_player(db)
+        dungeon.save_dungeon(db)
         await interaction.followup.send(content=response)
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -96,11 +95,11 @@ def main():
 
     @bot.tree.command(name="continue")
     async def continue_cmd(interaction):
-        await continue_command(interaction)
+        await continue_command(interaction, db=db)
 
     @bot.tree.command(name="inventory")
     async def inventory_cmd(interaction):
-        await inventory(interaction)
+        await inventory(interaction, db=db)
 
     bot.run(TOKEN)
 
