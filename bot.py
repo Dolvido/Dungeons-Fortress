@@ -1,7 +1,6 @@
 import os
 import discord
-from discord.ext import commands
-
+from discord import app_commands
 from dotenv import load_dotenv, find_dotenv
 from firebase_admin import initialize_app, credentials, firestore
 
@@ -14,60 +13,66 @@ TOKEN = os.getenv("TOKEN")
 # Initialise Firebase
 cred = credentials.Certificate("firebase.json")  # Add the path to your Firebase service account key
 default_app = initialize_app(cred)
-db = firestore.client()
 
-intents = discord.Intents.default()
+MY_GUILD = discord.Object(id=1129568088472420372)  # replace with your guild id
 
-class DungeonBot(commands.Bot):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+class DungeonBot(discord.Client):
+    def __init__(self, *, intents: discord.Intents):
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        self.tree.copy_global_to(guild=MY_GUILD)
+        await self.tree.sync(guild=MY_GUILD)
 
     async def on_ready(self):
+        await self.setup_hook()
         print(f'We have logged in as {self.user}')
 
-# Initialising bot
-bot = DungeonBot(command_prefix="/", intents=intents)
 
-@bot.command()
-async def start(ctx):
+async def start(interaction, db):
     try:
-        player = Player.load_player(ctx.user.name, db)
+        await interaction.response.defer()
+        player = await Player.load_player(interaction.user.name, db)
         if not player:
-            player = Player(ctx.user.name)
+            player = Player(interaction.user.name, db)
 
         dungeon = Dungeon.load_dungeon(player, db)
         if not dungeon:
             dungeon = Dungeon(player, db)
 
-        player.dungeon = dungeon
+        player.dungeon = dungeon  
         response = dungeon.start()
         player.save_player(db)
         dungeon.save_dungeon(db)     # Added the db argument
-        await ctx.send(content=response)
+        await interaction.followup.send(content=response)
     except Exception as e:
         print(f"An error occurred: {e}")
         error_message = "An error occurred while starting the dungeon. Please try again later."
-        await ctx.send(content=error_message)
+        await interaction.followup.send(content=error_message)
 
-@bot.command()
-async def continue_command(ctx):
+
+async def continue_command(interaction, db):
     try:
-        player = Player.load_player(ctx.user.name, db)
+        await interaction.response.defer()
+        player = await Player.load_player(interaction.user.name, db)
         dungeon = Dungeon.load_dungeon(player, db)
-        player.dungeon = dungeon
+        player.dungeon = dungeon  
         response = dungeon.continue_adventure()
         player.save_player(db)
         dungeon.save_dungeon(db)
-        await ctx.send(content=response)
+        await interaction.followup.send(content=response)
     except Exception as e:
         print(f"An error occurred: {e}")
         error_message = "An error occurred while continuing the dungeon. Please try again later."
-        await ctx.send(content=error_message)
-        
-@bot.command()
-async def inventory(ctx):
+        await interaction.followup.send(content=error_message)
+
+
+async def inventory(interaction, db):
     try:
-        player = Player.load_player(ctx.message.author.name, db)
+        await interaction.response.defer()
+        player = await Player.load_player(interaction.user.name, db)
         inventory = player.get_inventory()
         embed = discord.Embed(title="Your Inventory", color=0x00ff00)
         if inventory:
@@ -77,10 +82,32 @@ async def inventory(ctx):
         else:
             embed.description = "Your inventory is empty."
         
-        await ctx.send(embed=embed)
+        await interaction.followup.send(embed=embed)
     except Exception as e:
         print(f"An error occurred: {e}")
         error_message = "An error occurred while retrieving the inventory. Please try again later."
-        await ctx.send(content=error_message)
+        await interaction.followup.send(content=error_message)
 
-bot.run(TOKEN)
+
+def main():
+    intents = discord.Intents.default()
+    bot = DungeonBot(intents=intents)
+    db = firestore.client()
+
+    @bot.tree.command(name="start")
+    async def start_cmd(interaction):
+        await start(interaction, db=db)
+
+    @bot.tree.command(name="continue")
+    async def continue_cmd(interaction):
+        await continue_command(interaction, db=db)
+
+    @bot.tree.command(name="inventory")
+    async def inventory_cmd(interaction):
+        await inventory(interaction, db=db)
+
+    bot.run(TOKEN)
+
+
+if __name__ == "__main__":
+    main()
