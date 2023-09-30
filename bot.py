@@ -32,9 +32,9 @@ class DungeonBot(discord.Client):
 async def start(interaction, db):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db=db)
+        player = await Player.load_player(interaction.user.name, db)
         if not player:
-            player = Player(interaction.user.name)
+            player = await Player(interaction.user.name)
         
         dungeon = Dungeon.load_dungeon(player)
         if not dungeon:
