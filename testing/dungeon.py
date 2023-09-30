@@ -13,6 +13,10 @@ db = firestore.client()
 
 # Dungeon class to manage dungeon state and interactions
 class Dungeon:
+    def delete_dungeon(self):
+        dungeon_ref = self.db.collection('dungeons').document(self.player.name)
+        dungeon_ref.delete()
+
 
     def __init__(self, player, db):
         print("init dungeon class")
@@ -97,42 +101,52 @@ class Dungeon:
                                             "max_new_tokens": 250
                                         })
 
-            #GENERATE ENEMY
+            # GENERATE ENEMY
             generate_enemy_prompt = """{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat at power level {enemy_threat_level}. Describe the enemy that emerges from the shadows to challenge the hero."""
             llm_enemy_prompt = PromptTemplate(template=generate_enemy_prompt,
-                                            input_variables=["adventure_history", "enemy_threat_level"])
+                                                input_variables=["adventure_history", "enemy_threat_level"])
 
             # create language model chain and run against our prompt
             enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm, memory=self.memory)
             enemy_description = enemy_chain.predict(enemy_threat_level=self.threat_level)
 
-            combat_encounter_prompt = """{adventure_history} The previous step in our adventure follows: {encounter}
-            Amidst the eerie silence of the dungeon, a menacing enemy emerges from the shadows ; Its eyes gleaming with hostility. The air grows cold and tense as the impending clash of forces looming. Our hero faces the beast.
+            # Handle combat and get the outcome and message
+            combat_status, combat_message = self.player.handle_combat(self.threat_level)
 
-            Describe the battle in depth."""
-            weapon="sword"
-            combat_description = f"The enemy is {enemy_description} and the hero is armed with a {weapon}."
+            # Depending on the combat outcome, generate the appropriate narrative
+            if combat_status == "won":
+                # Generate a dynamic victory message using LLM
+                random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
 
+                dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
+                                            model_kwargs={
+                                                "temperature": random_temperature,
+                                                "max_new_tokens": 250
+                                            })
 
-            llm_prompt = PromptTemplate(
-                template=combat_encounter_prompt,
-                input_variables=["adventure_history", "encounter"])
+                # Prepare the prompt for generating the victory message
+                victory_prompt = """{adventure_history} The hero, with unmatched bravery and skill, faces the {enemy_description}. Describe the epic moment the hero vanquishes the beast."""
+                llm_victory_prompt = PromptTemplate(template=victory_prompt,
+                                                    input_variables=["adventure_history", "enemy_description"])
 
-            llm_chain = LLMChain(prompt=llm_prompt, llm=dungeon_llm, memory=self.memory)
+                # Create language model chain and run against our prompt
+                victory_chain = LLMChain(prompt=llm_victory_prompt, llm=dungeon_llm, memory=self.memory)
+                combat_narrative = victory_chain.predict(adventure_history=response, enemy_description=enemy_description)
+            else:  # if the combat_status is "lost"
+                # Generate a dynamic defeat message using LLM
+                defeat_prompt = """{adventure_history} Despite the hero's valiant efforts, the {enemy_description} proves to be too powerful. Describe the tragic moment the hero is defeated by the beast."""
+                llm_defeat_prompt = PromptTemplate(template=defeat_prompt,
+                                                input_variables=["adventure_history", "enemy_description"])
 
-            try:
-                response += enemy_description
-                response += llm_chain.predict(encounter=combat_description)                
-                #self.history.append(response)
-                earned_exp = 5
-                self.player.award_exp(earned_exp)
+                # Create language model chain and run against our prompt
+                defeat_chain = LLMChain(prompt=llm_defeat_prompt, llm=dungeon_llm, memory=self.memory)
+                combat_narrative = defeat_chain.predict(adventure_history=response, enemy_description=enemy_description)
 
-                damage_taken = random.randint(5, 20)  # Example: Random damage taken
-                response += "\n"+self.get_damage_message(damage_taken, self.threat_level)
-                self.check_player_has_died()
+            response += enemy_description
+            response += combat_narrative
+            response += combat_message
 
-            except Exception as e:
-                response = f"I couldn't generate a response due to the following error: {str(e)}"
+        # You can add any additional logic here if needed, like updating the dungeon state or player's inventory
 
             # If treasure encounter
         if encounter == "treasure":
@@ -251,12 +265,8 @@ class Dungeon:
         # end of continue_adventure            
         return response
 
-    def stop(self):
-        # Implement the logic to stop the dungeon
-        response = "Stopping the dungeon..."  # Placeholder, replace with actual implementation
-        return response
-
     def update_threat_level(self):
+        print("update_threat_level")
         # Update threat level exponentially
         self.threat_level *= self.threat_level_multiplier  # Adjust the multiplier as needed
 
@@ -269,7 +279,6 @@ class Dungeon:
         Handle the player's action to flee from the dungeon or combat.
         Implement penalties or rewards for fleeing, depending on the game design.
         """
-        inventory = self.player.view_inventory()
         treasures = self.player.inventory.get(
             'treasures', [])  # Get the treasures from the player's inventory
         response = "You have fled from the dungeon. Safety first."

@@ -1,6 +1,5 @@
 import random
-import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import firestore
 import json
 
 
@@ -17,30 +16,26 @@ class Player:
         self.max_base_damage = 10
         self.inventory = {}
 
-    def award_exp(self, exp):
-        self.exp += exp
-
     def get_stats(self):
         return self.exp, self.health
 
-
-    def decrement_health(self, base_damage, threat_level):
+    def take_damage(self, damage):
         base_damage = random.randint(1, self.max_base_damage)  # Random base damage up to max_base_damage
-        scaled_damage = base_damage * (threat_level ** 2)  # Adjusted scaling formula
-        self.health -= scaled_damage
+        self.health -= damage
         self.health = max(0, self.health)  # Ensure health does not go below 0
 
-        response = f"\nYou took {scaled_damage} damage and have {self.health} health remaining."
+        response = f"\nYou took {damage} damage and have {self.health} health remaining."
 
         if self.health == 0:
-            death_message, lost_treasures = self.die()  
+            death_message, lost_treasures = self.die()
+            self.dungeon.delete_dungeon()  
             response += f"\n{death_message}\n{lost_treasures}"
 
         return response
 
     def die(self):
         death_message = "You have died."
-
+        self.clear_treasures()  # Clear the player's treasures
         # Print out the inventory before it's lost
         if self.inventory and any(self.inventory.values()):
             treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items if items])
@@ -50,23 +45,40 @@ class Player:
 
         # Now reset the player's state including the inventory
         self.reset_player()
+        self.delete_treasures()
 
         return death_message, lost_treasures
+
+    def flee(self):
+        # Clear the player's treasures
+        self.clear_treasures()
+
+        # Reset the player's state
+        self.reset_player()
+        self.delete_treasures()
+
+        self.dungeon.delete_dungeon()
+        return "You have fled the dungeon. You have lost all your treasures and doubloons."
+
+    def clear_treasures(self):
+        # Get the reference to the player's document in Firestore
+        # Adjust the path according to your Firestore structure
+        player_doc_ref = self.db.collection('players').document(self.name)
+
+        # Update the player's document to clear the treasures field
+        # This assumes the treasures are stored in a field named 'treasures'
+        player_doc_ref.update({'treasures': firestore.DELETE_FIELD})
+
+        print(f"Treasures cleared for player {self.name}")
 
     def add_to_inventory(self, category, item):
         if category not in self.inventory:
             self.inventory[category] = []
         self.inventory[category].append(item)
 
-    def view_inventory(self):
-        if not any(self.inventory.values()):
-            return "Your inventory is empty."
-        inventory_items = []
-        for category, items in self.inventory.items():
-            if items:
-                items_str = [str(item) for item in items]
-                inventory_items.append(f"{category.capitalize()}: {', '.join(items_str)}")
-        return '\n'.join(inventory_items)
+    async def get_inventory(self):
+        await self.load_player_inventory()  # Load the inventory from the database
+        return self.inventory
 
     def reset_player(self):
         self.exp = 0
@@ -79,7 +91,39 @@ class Player:
         print(f"You gained {amount} experience points!")
         # Save player state to Firestore whenever it changes
         self.save_player()
+   
+    def handle_combat(self, enemy_threat_level):
+        # Calculate combat outcome
+        combat_outcome = self.max_base_damage - enemy_threat_level  # Simplified for example
+    
+        # Update player's HP
+        self.take_damage(combat_outcome)
+          # Ensure health does not go below 0
+    
+        # Award experience - this can be modified as per the game's logic
+        self.award_exp(enemy_threat_level)
+    
+        # Update player's health and experience in the database
+        player_ref = self.db.collection('players').document(self.name)
+        player_ref.update({'health': self.health, 'experience': self.experience})
+    
+        # Check if player won or lost
+        if self.health > 0:
+            return "won", f"You took {combat_outcome} damage and have {self.health} health remaining."
+        else:
+            death_message, lost_treasures = self.die()
+            self.dungeon.delete_dungeon()  
+            return "lost", f"You took {combat_outcome} damage and have died.\n{death_message}\n{lost_treasures}"
 
+    def award_exp(self, exp):
+        self.experience += exp
+
+    def delete_treasures(self):
+        print(f"Deleting treasures for player {self.name}")
+        treasures_ref = self.db.collection('treasures').document(self.name)
+        treasures_ref.delete()
+
+        
     def to_dict(self):
         return {
             'name': self.name,
@@ -109,12 +153,10 @@ class Player:
         player_ref.set(self.to_dict(), merge=True)
 
     @classmethod
-    async def load_player(self, cls, player_name, db):
+    async def load_player(cls, player_name, db):
         # Asynchronously load player data from the database
-        doc_ref = self.db.collection('players').document(player_name)
-        treasure_ref = self.db.collection('treasures').document(player_name)  # Reference to the player's treasures in the database
+        doc_ref = db.collection('players').document(player_name)
         doc = await doc_ref.get()
-        treasure_doc = await treasure_ref.get()  # Asynchronously get the player's treasures
 
         if doc.exists:
             player_data = doc.to_dict()
@@ -128,22 +170,27 @@ class Player:
             player.health = player_data.get('health', 100)
             player.max_base_damage = player_data.get('max_base_damage', 10)
 
-            # If the treasure document exists, load the player's treasures from the database
-            if treasure_doc.exists:
-                treasures_data = treasure_doc.to_dict()
-                print(f"Treasures Data from DB: {treasures_data}")  # Debug print
-
-                player.inventory = treasures_data.get('treasures', [])
-                print(f"Player's Inventory after Assignment: {player.inventory}")  # Debug print
-            else:
-                player.inventory = []
-                print("Treasure Document does not exist.")  # Debug print
+            await player.load_player_inventory(player_name)  # Load player's inventory
 
             return player
         else:
             print(f"No player found with the name {player_name}")
             return None
-    
+
+    async def load_player_inventory(self):
+        # Asynchronously load player's treasures from the database
+        treasure_ref = self.db.collection('treasures').document(self.name)
+        treasure_doc = treasure_ref.get()  # Removed 'await'
+
+        if treasure_doc.exists:
+            treasures_data = treasure_doc.to_dict()
+            print(f"Treasures Data from DB: {treasures_data}")  # Debug print
+            self.inventory = treasures_data.get('treasures', [])
+            print(f"Player's Inventory after Assignment: {self.inventory}")  # Debug print
+        else:
+            self.inventory = []
+            print("Treasure Document does not exist.")  # Debug print
+
     async def get_stats_from_db(self):
         player_ref = self.db.collection('players').document(self.name)
         player_doc = await player_ref.get()
