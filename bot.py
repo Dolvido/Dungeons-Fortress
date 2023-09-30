@@ -2,24 +2,23 @@ import os
 import discord
 from discord import app_commands
 from dotenv import load_dotenv, find_dotenv
-from tabulate import tabulate
-
-import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import initialize_app, credentials
 
 from player import Player
 from dungeon import Dungeon
 
-from discord import Embed
-
-load_dotenv(find_dotenv())
+load_dotenv()
 TOKEN = os.getenv("TOKEN")
+
+# Initialise Firebase
+cred = credentials.Certificate("path/to/serviceAccountKey.json") # Add the path to your Firebase service account key
+default_app = initialize_app(cred)
+
 MY_GUILD = discord.Object(id=1129568088472420372)  # replace with your guild id
 
 class DungeonBot(discord.Client):
-    def __init__(self, db, *, intents: discord.Intents):
+    def __init__(self, *, intents: discord.Intents):
         super().__init__(intents=intents)
-        self.db = db
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
@@ -30,16 +29,16 @@ class DungeonBot(discord.Client):
         await self.setup_hook()
         print(f'We have logged in as {self.user}')
 
-async def start(interaction, db):
+async def start(interaction):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)
+        player = Player.load_player(interaction.user.name)
         if not player:
-            player = Player(interaction.user.name, db)
+            player = Player(interaction.user.name)
         
-        dungeon = await Dungeon.load_dungeon(player, db)
+        dungeon = Dungeon.load_dungeon(player)
         if not dungeon:
-            dungeon = Dungeon(player, db)
+            dungeon = Dungeon(player)
 
         player.dungeon = dungeon  
         response = dungeon.start()
@@ -51,11 +50,11 @@ async def start(interaction, db):
         error_message = "An error occurred while starting the dungeon. Please try again later."
         await interaction.followup.send(content=error_message)
 
-async def continue_command(interaction, db):
+async def continue_command(interaction):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)  
-        dungeon = await Dungeon.load_dungeon(player, db)
+        player = Player.load_player(interaction.user.name)
+        dungeon = Dungeon.load_dungeon(player)
         player.dungeon = dungeon  
         response = dungeon.continue_adventure()
         player.save_player()
@@ -66,12 +65,12 @@ async def continue_command(interaction, db):
         error_message = "An error occurred while continuing the dungeon. Please try again later."
         await interaction.followup.send(content=error_message)
 
-async def inventory(interaction, db):
+async def inventory(interaction):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)  
-        inventory = await player.get_inventory()
-        embed = Embed(title="Your Inventory", color=0x00ff00)
+        player = Player.load_player(interaction.user.name)
+        inventory = player.get_inventory()
+        embed = discord.Embed(title="Your Inventory", color=0x00ff00)
         if inventory:
             for category, items in inventory.items():
                 for item in items:
@@ -86,22 +85,20 @@ async def inventory(interaction, db):
         await interaction.followup.send(content=error_message)
 
 def main():
-    load_dotenv()
-    db = firestore.client()
     intents = discord.Intents.default()
-    bot = DungeonBot(db, intents=intents)
+    bot = DungeonBot(intents=intents)
 
     @bot.tree.command(name="start")
     async def start_cmd(interaction):
-        await start(interaction, db)
+        await start(interaction)
 
     @bot.tree.command(name="continue")
     async def continue_cmd(interaction):
-        await continue_command(interaction, db)
+        await continue_command(interaction)
 
     @bot.tree.command(name="inventory")
     async def inventory_cmd(interaction):
-        await inventory(interaction, db)
+        await inventory(interaction)
 
     bot.run(TOKEN)
 
