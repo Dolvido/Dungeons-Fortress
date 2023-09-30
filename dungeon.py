@@ -72,13 +72,13 @@ class Dungeon:
         )[0]
 
         if (encounter == "combat"):
-            response += self.combat_operation()
+            response += self.combat_operation(db)
 
         if encounter == "treasure":
-            response += self.treasure_operation()
+            response += self.treasure_operation(db)
 
         if (encounter == "nothing"):
-            response += self.no_encounter_operation()
+            response += self.no_encounter_operation(db)
 
         self.end_of_continue_adventure_phase(db)
         return response
@@ -89,7 +89,7 @@ class Dungeon:
 
     # Implement the remaining needed methods as per the task and recorrecting where needed
 
-    def combat_operation(self):
+    def combat_operation(self, db):
         # Generate random temperature variable for the language model chain
         random_temperature = random.uniform(0.01, 1.0)
 
@@ -104,7 +104,7 @@ class Dungeon:
 
         enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm, memory=self.memory)
         enemy_description = enemy_chain.predict(enemy_threat_level=self.threat_level)
-        combat_status, combat_message = self.player.handle_combat(self.threat_level)
+        combat_status, combat_message = self.player.handle_combat(self.threat_level, db)
 
         if combat_status == "won":
             combat_narrative = self.get_victory_narrative(enemy_description)
@@ -144,7 +144,7 @@ class Dungeon:
     
         return combat_narrative
 
-    def treasure_operation(self):
+    def treasure_operation(self, db):
         """
         Handles the operation where the adventure enters a treasure room.
         """
@@ -175,8 +175,8 @@ class Dungeon:
         generated_treasure = treasure_chain.predict(treasure_assembled_string=treasure_assembled_string)
 
         # Add the treasure to the player's inventory and database
-        self.player.add_to_inventory('treasures', treasure_attributes)
-        self.add_treasure_to_db(treasure_attributes)
+        self.player.add_to_inventory('treasures', treasure_attributes, db)
+        self.add_treasure_to_db(treasure_attributes, db)
 
         response = "\nTREASURE ROOM\n" + generated_treasure
         return response
