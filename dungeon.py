@@ -52,7 +52,7 @@ class Dungeon:
 
         return response
 
-    def continue_adventure(self):
+    def continue_adventure(self, db):
         self.depth += 1
         damage_taken = 0
         response = ""
@@ -80,7 +80,7 @@ class Dungeon:
         if (encounter == "nothing"):
             response += self.no_encounter_operation()
 
-        self.end_of_continue_adventure_phase()
+        self.end_of_continue_adventure_phase(db)
         return response
 
     def print_threat_level(self):
@@ -208,13 +208,13 @@ class Dungeon:
         response = "\nEMPTY ROOM\n" + generated_description
         return response
 
-    def end_of_continue_adventure_phase(self):
+    def end_of_continue_adventure_phase(self, db):
         """
         Called at the end of continue_adventure function to update threat level and dungeon state in the database.
         """
         print("end_of_continue_adventure_phase")
         self.update_threat_level()
-        self.save_dungeon()
+        self.save_dungeon(db)
 
     def update_threat_level(self):
         """

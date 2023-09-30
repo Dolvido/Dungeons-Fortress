@@ -45,7 +45,7 @@ async def start(interaction, db):
         player.dungeon = dungeon  
         response = dungeon.start()
         player.save_player(db)
-        dungeon.save_dungeon(db)     # Added the db argument
+        dungeon.save_dungeon(db)  # Added the db argument
         await interaction.followup.send(content=response)
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -57,9 +57,19 @@ async def continue_command(interaction, db):
     try:
         await interaction.response.defer()
         player = await Player.load_player(interaction.user.name, db)
+        if not player:
+            error_message = "Player not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
         dungeon = Dungeon.load_dungeon(player, db)
+        if not dungeon:
+            error_message = "Dungeon not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
         player.dungeon = dungeon  
-        response = dungeon.continue_adventure()
+        response = dungeon.continue_adventure(db)
         player.save_player(db)
         dungeon.save_dungeon(db)
         await interaction.followup.send(content=response)
