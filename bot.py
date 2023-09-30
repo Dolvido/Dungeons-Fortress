@@ -29,7 +29,7 @@ class DungeonBot(discord.Client):
         await self.setup_hook()
         print(f'We have logged in as {self.user}')
 
-async def start(interaction):
+async def start(interaction, db):
     try:
         await interaction.response.defer()
         player = await Player.load_player(interaction.user.name, db=db)
