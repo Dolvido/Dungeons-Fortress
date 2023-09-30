@@ -122,27 +122,36 @@ class Dungeon:
         random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
-                                        model_kwargs={
+                                        model_kwargs={{
                                             "temperature": random_temperature,
                                             "max_new_tokens": 250
-                                        })
+                                        }})
 
-        victory_prompt = "{adventure_history} The hero, with unmatched bravery and skill, faces the {enemy_description}. Describe the epic moment the hero vanquishes the beast."
+        victory_prompt = "{adventure_history} The hero, with unmatched bravery and skill, faces the {{enemy_description}}. Describe the epic moment the hero vanquishes the beast."
         llm_victory_prompt = PromptTemplate(template=victory_prompt, input_variables=["adventure_history", "enemy_description"])
 
         victory_chain = LLMChain(prompt=llm_victory_prompt, llm=dungeon_llm, memory=self.memory)
-        combat_narrative = victory_chain.predict(adventure_history=response, enemy_description=enemy_description)
+        combat_narrative = victory_chain.predict(enemy_description=enemy_description)
     
         return combat_narrative
 
-    def get_defeat_narrative(self, enemy_description):
-        defeat_prompt = "{adventure_history} Despite the hero's valiant efforts, the {enemy_description} proves to be too powerful. Describe the tragic moment the hero is defeated by the beast."
+    def get_defeat_narrative(self, enemy_description, adventure_history):
+        random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
+
+        dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
+                                        model_kwargs={{
+                                            "temperature": random_temperature,
+                                            "max_new_tokens": 250
+                                        }})
+        
+        defeat_prompt = "{adventure_history} Despite the hero's valiant efforts, the {{enemy_description}} proves to be too powerful. Describe the tragic moment the hero is defeated by the beast."
         llm_defeat_prompt = PromptTemplate(template=defeat_prompt, input_variables=["adventure_history", "enemy_description"])
 
         defeat_chain = LLMChain(prompt=llm_defeat_prompt, llm=dungeon_llm, memory=self.memory)
-        combat_narrative = defeat_chain.predict(adventure_history=response, enemy_description=enemy_description)
+        combat_narrative = defeat_chain.predict(enemy_description=enemy_description)
     
         return combat_narrative
+
 
     def treasure_operation(self, db):
         """
@@ -181,7 +190,7 @@ class Dungeon:
         response = "\nTREASURE ROOM\n" + generated_treasure
         return response
 
-    def no_encounter_operation(self):
+    def no_encounter_operation(self, db):
         """
         Handles the operation where the adventure enters an empty room.
         """
@@ -213,10 +222,10 @@ class Dungeon:
         Called at the end of continue_adventure function to update threat level and dungeon state in the database.
         """
         print("end_of_continue_adventure_phase")
-        self.update_threat_level()
+        self.update_threat_level(db)
         self.save_dungeon(db)
 
-    def update_threat_level(self):
+    def update_threat_level(self, db):
         """
         Update threat level exponentially and cap the threat level to the maximum value.
         """
@@ -254,6 +263,4 @@ class Dungeon:
         }
         
         db.collection('dungeons').document(self.player.name).set(data)
-
-    ... # The rest of your methods remain unchanged
 
