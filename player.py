@@ -153,9 +153,9 @@ class Player:
         player_ref.set(self.to_dict(), merge=True)
 
     @classmethod
-    def load_player(cls, player_name, db):
+    def load_player(cls, player_name):
         # Asynchronously load player data from the database
-        doc_ref = db.collection('players').document(player_name)
+        doc_ref = cls.db.collection('players').document(player_name)
         doc = doc_ref.get()
 
         if doc.exists:
