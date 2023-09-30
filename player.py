@@ -192,7 +192,6 @@ class Player:
             print(f"Player's Inventory after Assignment: {self.inventory}")  # Debug print
         else:
             self.inventory = []
-            print("Treasure Document does not exist.")  # Debug print
 
 
 
