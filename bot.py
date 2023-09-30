@@ -14,8 +14,6 @@ TOKEN = os.getenv("TOKEN")
 cred = credentials.Certificate("firebase.json") # Add the path to your Firebase service account key
 default_app = initialize_app(cred)
 
-db = firestore.client()
-
 MY_GUILD = discord.Object(id=1129568088472420372)  # replace with your guild id
 
 class DungeonBot(discord.Client):
@@ -89,10 +87,11 @@ async def inventory(interaction):
 def main():
     intents = discord.Intents.default()
     bot = DungeonBot(intents=intents)
+    db = firestore.client()
 
     @bot.tree.command(name="start")
     async def start_cmd(interaction):
-        await start(interaction)
+        await start(interaction, db=db)
 
     @bot.tree.command(name="continue")
     async def continue_cmd(interaction):
