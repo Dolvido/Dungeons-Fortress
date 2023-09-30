@@ -2,7 +2,7 @@ import os
 import discord
 from discord import app_commands
 from dotenv import load_dotenv, find_dotenv
-from firebase_admin import initialize_app, credentials
+from firebase_admin import initialize_app, credentials, firestore
 
 from player import Player
 from dungeon import Dungeon
@@ -11,8 +11,10 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
 # Initialise Firebase
-cred = credentials.Certificate("path/to/serviceAccountKey.json") # Add the path to your Firebase service account key
+cred = credentials.Certificate("firebase.json") # Add the path to your Firebase service account key
 default_app = initialize_app(cred)
+
+db = firestore.client()
 
 MY_GUILD = discord.Object(id=1129568088472420372)  # replace with your guild id
 
@@ -32,7 +34,7 @@ class DungeonBot(discord.Client):
 async def start(interaction):
     try:
         await interaction.response.defer()
-        player = Player.load_player(interaction.user.name)
+        player = await Player.load_player(interaction.user.name, db=db)
         if not player:
             player = Player(interaction.user.name)
         
