@@ -5,9 +5,9 @@ import json
 
 class Player:
 
-    def __init__(self, name, db):
+    def __init__(self, name):
         self.name = name
-        self.db = db
+        
         self.level = 1
         self.experience = 0
         self.exp = 0
@@ -153,9 +153,9 @@ class Player:
         player_ref.set(self.to_dict(), merge=True)
 
     @classmethod
-    def load_player(cls, player_name):
+    def load_player(cls, player_name, db):
         # Asynchronously load player data from the database
-        doc_ref = cls.db.collection('players').document(player_name)
+        doc_ref = db.collection('players').document(player_name)
         doc = doc_ref.get()
 
         if doc.exists:
