@@ -37,6 +37,8 @@ class Player:
 
         return response
 
+
+
     def die(self, db):
         death_message = "You have died."
 
@@ -103,26 +105,22 @@ class Player:
     def handle_combat(self, enemy_threat_level, db):
         # Calculate combat outcome
         combat_outcome = self.max_base_damage - enemy_threat_level  # Simplified for example
-    
-        # Update player's HP
-        self.take_damage(combat_outcome, db)
-          # Ensure health does not go below 0
-    
+        
+        # Take damage, returns string message about the combat outcome
+        combat_message = self.take_damage(combat_outcome, db)
+            
         # Award experience - this can be modified as per the game's logic
         self.award_exp(enemy_threat_level)
-    
-        # Update player's health and experience in the database
-        player_ref = db.collection('players').document(self.name)
-        player_ref.update({'health': self.health, 'experience': self.experience})
-    
+            
         # Check if player won or lost
         if self.health > 0:
-            return "won", f"You took {combat_outcome} damage and have {self.health} health remaining."
-        else:
-            death_message, lost_treasures = self.die(db)
-            self.dungeon.delete_dungeon(db)  
-            return "lost", f"You took {combat_outcome} damage and have died.\n{death_message}\n{lost_treasures}"
-
+            # Player won the combat, update health and experience in the database
+            player_ref = db.collection('players').document(self.name)
+            player_ref.update({'health': self.health, 'experience': self.experience})
+            return "won", combat_message
+        else:  
+            return "lost", combat_message
+        
     def award_exp(self, exp):
         self.experience += exp
 

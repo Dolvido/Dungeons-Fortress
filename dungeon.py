@@ -95,7 +95,8 @@ class Dungeon:
             print('encountered an escape room: ', self.player.name)
             response += self.escape_room_operation(db)        
 
-        self.end_of_continue_adventure_phase(db)
+        self.update_threat_level(db)
+        self.save_dungeon(db)
         return response
 
     def print_threat_level(self):
@@ -303,13 +304,7 @@ class Dungeon:
             return f"An error occurred when adding treasure to database: {e}"
         return "Treasure added to the database!"
     
-    def end_of_continue_adventure_phase(self, db):
-        """
-        Called at the end of continue_adventure function to update threat level and dungeon state in the database.
-        """
-        print("end_of_continue_adventure_phase")
-        self.update_threat_level(db)
-        self.save_dungeon(db)
+
 
     def update_threat_level(self, db):
         """
@@ -318,12 +313,15 @@ class Dungeon:
         print("update_threat_level")
         self.threat_level *= self.threat_level_multiplier
         print("calculated threat level: " + str(self.threat_level))
+        print("self.depth" + str(self.depth))
         self.threat_level = min(self.threat_level, self.max_threat_level)
         dungeon_ref = db.collection('dungeons').document(self.player.name)
-        dungeon_ref.update({'threat_level': self.threat_level})
+        if dungeon_ref.get().exists:
+            dungeon_ref.update({'threat_level': self.threat_level})
 
     @staticmethod
     def load_dungeon(player, db):
+        print("load_dungeon")
         dungeon_data = db.collection('dungeons').document(player.name).get()
         if dungeon_data.exists:
             data = dungeon_data.to_dict()
@@ -339,7 +337,16 @@ class Dungeon:
         else:
             return None
 
-    def save_dungeon(self, db):
+    def save_dungeon(self, db: firestore.Client):
+        print("save_dungeon")
+        
+        doc_ref = db.collection('dungeons').document(self.player.name)
+            
+        # Check if document exists
+        if doc_ref.get().exists:
+            print(f"Document for player {self.player.name} already exists.")
+            return
+            
         data = {
             'repo_id_llm': self.repo_id_llm,
             'depth' : self.depth,
@@ -347,6 +354,6 @@ class Dungeon:
             'max_threat_level' : self.max_threat_level,
             'threat_level_multiplier' : self.threat_level_multiplier
         }
-        
-        db.collection('dungeons').document(self.player.name).set(data)
+            
+        doc_ref.set(data)
 
