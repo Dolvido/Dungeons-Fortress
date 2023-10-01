@@ -188,6 +188,39 @@ async def flee(interaction, db):
         error_message += f"\nError Details: {e}" 
         await interaction.followup.send(content=error_message)
 
+async def escape(interaction, db):
+    try:
+        await interaction.response.defer()
+        player = await Player.load_player(interaction.user.name, db)
+        if not player:
+            error_message = "Player not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
+        dungeon = Dungeon.load_dungeon(player, db)
+        if not dungeon:
+            error_message = "Dungeon not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+            
+        # Check if the player is currently in an escape room
+        if dungeon.room_type != "escape_room":
+            error_message = "You can only use /escape while you're in an escape room."
+            await interaction.followup.send(content=error_message)
+            return
+
+        player.dungeon = dungeon
+        escaping_response = player.escape(db)
+        player.save_player(db)
+        dungeon.delete_dungeon(db)
+        await interaction.followup.send(content=escaping_response)
+            
+    except Exception as e: 
+        print(f"An error occurred: {e}")
+        error_message = "An error occurred while trying to escape. Please try again."
+        error_message += f"\nError Details: {e}" 
+        await interaction.followup.send(content=error_message)
+
 def main():
     intents = discord.Intents.default()
     bot = DungeonBot(intents=intents)

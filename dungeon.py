@@ -20,10 +20,13 @@ class Dungeon:
         self.threat_level = None
         self.max_threat_level = 5
         self.threat_level_multiplier = 1.5
+        self.escape_chance = 0.1
+        self.room_type = "start"
         self.chat_history = ChatMessageHistory()
         self.memory = ConversationBufferMemory(memory_key="adventure_history")
 
     def delete_dungeon(self, db):
+        print("delete_dungeon")
         # Get a reference to the Dungeon document and then call the delete() method.
         dungeon_ref = db.collection('dungeons').document(self.player.name)
         dungeon_ref.delete()
@@ -66,14 +69,16 @@ class Dungeon:
         weights = {
             "combat": self.threat_level,
             "treasure": max(1, 5 - self.threat_level),
-            "nothing": max(1, 10 - self.threat_level)
+            "nothing": max(1, 10 - self.threat_level),
+            "escape":max(1, int(self.depth * self.escape_chance))
         }
 
         encounter = random.choices(
-            population=["combat", "treasure", "nothing"], 
-            weights=[weights["combat"], weights["treasure"], weights["nothing"]],
+            population=["combat", "treasure", "nothing", "escape"], 
+            weights=[weights["combat"], weights["treasure"], weights["nothing"], weights["escape"]],
             k=1
         )[0]
+        self.room_type = encounter
 
         if (encounter == "combat"):
             print('encountered a combat encounter: ', self.player.name)
@@ -86,6 +91,9 @@ class Dungeon:
         if (encounter == "nothing"):
             print('encountered an empty room: ', self.player.name)
             response += self.no_encounter_operation(db)
+        if encounter == "escape":
+            print('encountered an escape room: ', self.player.name)
+            response += self.escape_room_operation(db)        
 
         self.end_of_continue_adventure_phase(db)
         return response
@@ -95,6 +103,30 @@ class Dungeon:
         response = f"\nThreat Level: {self.threat_level}"
 
     # Implement the remaining needed methods as per the task and recorrecting where needed
+    def escape_room_operation(self, db):
+        # Generate random temperature variable for the language model chain
+        random_temperature = random.uniform(0.01, 1.0)
+
+        dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
+                                    model_kwargs={
+                                        "temperature": random_temperature,
+                                        "max_new_tokens": 100
+                                    })
+
+        generate_escape_room_prompt = "{adventure_history} Suddenly, the adventurer stumbles upon a hidden door {properties}. It is an escape room. Describe the scene in detail."
+        llm_escape_room_prompt = PromptTemplate(template=generate_escape_room_prompt,
+                                                input_variables=["adventure_history", "properties"])
+
+        print("generating escape room")
+        escape_room_chain = LLMChain(prompt=llm_escape_room_prompt, llm=dungeon_llm, memory=self.memory)
+        escape_room_description = escape_room_chain.predict(properties="bathed in white light")
+
+        response = "\nESCAPE ROOM\n"
+        response += escape_room_description
+        response += "\nContrary to what the dungeon has been throwing at you, this room offers you a way out. You take the chance and escape the dungeon with all your hard-earned treasures intact."
+
+        self.player.flee(db)  # Player flees the dungeon without losing any treasure
+        return response
 
     def combat_operation(self, db):
         # Generate random temperature variable for the language model chain
