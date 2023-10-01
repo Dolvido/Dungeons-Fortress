@@ -75,11 +75,12 @@ class Player:
 
         print(f"Treasures cleared for player {self.name}")
 
-    def add_to_inventory(self, category, item, db):
-        if category not in self.inventory:
-            self.inventory[category] = []
-        self.inventory[category].append(item)
-        self.save_player(db)
+    def use_treasure(self, index):
+        if index < len(self.inventory):
+            treasure = self.inventory.pop(index)
+            return f'You used the {treasure}. Effect: {treasure.use()}'
+        else:
+            return "Invalid index. No such treasure in the inventory."
 
     def reset_player(self):
         self.exp = 0
@@ -235,11 +236,12 @@ class Player:
         inventory = ', '.join(str(item) for item in self.inventory)
         return f"Player: {self.name}, Level: {self.level}, Health: {self.health}, Inventory: [{inventory}]"
             
-    def add_to_inventory(self, treasure):
+    def add_to_inventory(self, treasure, db):
         """
         Add the treasure object to the player's inventory.
         """
         self.inventory.append(treasure)
+        self.save_player(db)
             
     def use_treasure(self, index):
         """
