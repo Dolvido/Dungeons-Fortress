@@ -19,7 +19,7 @@ class Player:
     def get_stats(self):
         return self.exp, self.health
 
-    def take_damage(self, damage):
+    def take_damage(self, damage, db):
         base_damage = random.randint(1, self.max_base_damage)  # Random base damage up to max_base_damage
         self.health -= damage
         self.health = max(0, self.health)  # Ensure health does not go below 0
@@ -27,15 +27,15 @@ class Player:
         response = f"\nYou took {damage} damage and have {self.health} health remaining."
 
         if self.health == 0:
-            death_message, lost_treasures = self.die()
-            self.dungeon.delete_dungeon()  
+            death_message, lost_treasures = self.die(db)
+            self.dungeon.delete_dungeon(db)  
             response += f"\n{death_message}\n{lost_treasures}"
 
         return response
 
-    def die(self):
+    def die(self, db):
         death_message = "You have died."
-        self.clear_treasures()  # Clear the player's treasures
+        self.clear_treasures(db)  # Clear the player's treasures
         # Print out the inventory before it's lost
         if self.inventory and any(self.inventory.values()):
             treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items if items])
@@ -45,19 +45,19 @@ class Player:
 
         # Now reset the player's state including the inventory
         self.reset_player()
-        self.delete_treasures()
+        self.delete_treasures(db)
 
         return death_message, lost_treasures
 
-    def flee(self):
+    def flee(self, db):
         # Clear the player's treasures
-        self.clear_treasures()
+        self.clear_treasures(db)
 
         # Reset the player's state
         self.reset_player()
-        self.delete_treasures()
+        self.clear_treasures(db)
 
-        self.dungeon.delete_dungeon()
+        self.dungeon.delete_dungeon(db)
         return "You have fled the dungeon. You have lost all your treasures and doubloons."
 
     def clear_treasures(self, db):
@@ -71,11 +71,11 @@ class Player:
 
         print(f"Treasures cleared for player {self.name}")
 
-    def add_to_inventory(self, category, item):
+    def add_to_inventory(self, category, item, db):
         if category not in self.inventory:
             self.inventory[category] = []
         self.inventory[category].append(item)
-        self.save_player()
+        self.save_player(db)
         
 
     async def get_inventory(self):
@@ -99,7 +99,7 @@ class Player:
         combat_outcome = self.max_base_damage - enemy_threat_level  # Simplified for example
     
         # Update player's HP
-        self.take_damage(combat_outcome)
+        self.take_damage(combat_outcome, db)
           # Ensure health does not go below 0
     
         # Award experience - this can be modified as per the game's logic
@@ -113,8 +113,8 @@ class Player:
         if self.health > 0:
             return "won", f"You took {combat_outcome} damage and have {self.health} health remaining."
         else:
-            death_message, lost_treasures = self.die()
-            self.dungeon.delete_dungeon()  
+            death_message, lost_treasures = self.die(db)
+            self.dungeon.delete_dungeon(db)  
             return "lost", f"You took {combat_outcome} damage and have died.\n{death_message}\n{lost_treasures}"
 
     def award_exp(self, exp):

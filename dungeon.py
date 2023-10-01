@@ -22,9 +22,9 @@ class Dungeon:
         self.chat_history = ChatMessageHistory()
         self.memory = ConversationBufferMemory(memory_key="adventure_history")
 
-    def delete_dungeon(self):
+    def delete_dungeon(self, db):
         # Get a reference to the Dungeon document and then call the delete() method.
-        dungeon_ref = self.db.collection('dungeons').document(self.player.name)
+        dungeon_ref = db.collection('dungeons').document(self.player.name)
         dungeon_ref.delete()
 
 
@@ -57,7 +57,7 @@ class Dungeon:
         self.depth += 1
         damage_taken = 0
         response = ""
-        print('%s is continuing the dungeon adventure at depth %s', self.player.name, str(self.depth))
+        print(self.player.name +'is continuing the dungeon adventure at depth ' + str(self.depth))
 
         self.print_threat_level()
 
@@ -103,18 +103,32 @@ class Dungeon:
                                         "temperature": random_temperature,
                                         "max_new_tokens": 250
                                     })
-    
-        generate_enemy_prompt = "{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat at power level {enemy_threat_level}. Describe the enemy that emerges from the shadows to challenge the hero."
-        llm_enemy_prompt = PromptTemplate(template=generate_enemy_prompt, input_variables=["adventure_history", "enemy_threat_level"])
+        
+        enemy_attributes = {
+            "type": random.choice(["goblin", "troll", "dragon", "skeleton", "zombie"]),
+            "weapon": random.choice(["claws", "sword", "magic", "fangs", "axe"]),
+            "appearance": random.choice(["horrifying", "grotesque", "terrifying", "ghastly", "hideous"]),
+            "strength": random.choice(["immense strength", "magical powers", "swift agility", "overwhelming numbers", "deadly precision"]),
+            "weakness": random.choice(["fear of light", "slow movements", "limited vision", "low intelligence", "magic susceptibility"])
+        }
 
+        enemy_assembled_string = f'A {enemy_attributes["appearance"]} {enemy_attributes["type"]} wielding a {enemy_attributes["weapon"]} with {enemy_attributes["strength"]}, but has a {enemy_attributes["weakness"]}'
+        print("Enemy string: " + enemy_assembled_string)
+        generate_enemy_prompt = "{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat. The enemy that emerges from the shadows to challenge the hero is a {enemy}."
+        llm_enemy_prompt = PromptTemplate(template=generate_enemy_prompt, input_variables=["adventure_history", "enemy"])
+
+        print("generating enemy")
         enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm, memory=self.memory)
-        enemy_description = enemy_chain.predict(enemy_threat_level=self.threat_level)
+        enemy_description = enemy_chain.predict(enemy=enemy_assembled_string)
+
         combat_status, combat_message = self.player.handle_combat(self.threat_level, db)
 
+        print("generating narrative")
+        print("enemy description: " + enemy_description)
         if combat_status == "won":
-            combat_narrative = self.get_victory_narrative(enemy_description)
+            combat_narrative = self.get_victory_narrative(enemy_assembled_string)
         else:  # if the combat_status is "lost"
-            combat_narrative = self.get_defeat_narrative(enemy_description)
+            combat_narrative = self.get_defeat_narrative(enemy_assembled_string)
 
         response = f"\nCOMBAT ENCOUNTER\n"
         response += enemy_description
@@ -124,36 +138,38 @@ class Dungeon:
         return response
 
     def get_victory_narrative(self, enemy_description):
+        print("get_victory_narrative")
         random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
-                                        model_kwargs={{
+                                        model_kwargs={
                                             "temperature": random_temperature,
                                             "max_new_tokens": 250
-                                        }})
+                                        })
 
-        victory_prompt = "{adventure_history} The hero, with unmatched bravery and skill, faces the {{enemy_description}}. Describe the epic moment the hero vanquishes the beast."
+        victory_prompt = "{adventure_history} The hero, with unmatched bravery and skill, faces the {enemy_description}. Describe the epic moment the hero vanquishes the beast."
         llm_victory_prompt = PromptTemplate(template=victory_prompt, input_variables=["adventure_history", "enemy_description"])
 
         victory_chain = LLMChain(prompt=llm_victory_prompt, llm=dungeon_llm, memory=self.memory)
-        combat_narrative = victory_chain.predict(enemy_description=enemy_description)
+        combat_narrative = victory_chain.predict(enemy_description=enemy_description.format())
     
         return combat_narrative
 
-    def get_defeat_narrative(self, enemy_description, adventure_history):
+    def get_defeat_narrative(self, enemy_description):
+        print("get_defeat_narrative")
         random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
-                                        model_kwargs={{
+                                        model_kwargs={
                                             "temperature": random_temperature,
                                             "max_new_tokens": 250
-                                        }})
+                                        })
         
-        defeat_prompt = "{adventure_history} Despite the hero's valiant efforts, the {{enemy_description}} proves to be too powerful. Describe the tragic moment the hero is defeated by the beast."
+        defeat_prompt = "{adventure_history} Despite the hero's valiant efforts, the {enemy_description} proves to be too powerful. Describe the tragic moment the hero is defeated by the beast."
         llm_defeat_prompt = PromptTemplate(template=defeat_prompt, input_variables=["adventure_history", "enemy_description"])
 
         defeat_chain = LLMChain(prompt=llm_defeat_prompt, llm=dungeon_llm, memory=self.memory)
-        combat_narrative = defeat_chain.predict(enemy_description=enemy_description)
+        combat_narrative = defeat_chain.predict(enemy_description=enemy_description.format())
     
         return combat_narrative
 
