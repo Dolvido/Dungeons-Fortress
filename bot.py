@@ -136,6 +136,7 @@ async def inventory(interaction, db):
         await interaction.followup.send(content=error_message)
 
 async def equip(interaction, db):
+    """ equip command """
     try:
         await interaction.response.defer()
         player = await Player.load_player(interaction.user.name, db)
@@ -160,6 +161,33 @@ async def equip(interaction, db):
         error_message += f"\nError Details: {e}"  # Adding error details for more context
         await interaction.followup.send(content=error_message)
 
+async def flee(interaction, db):
+    try:
+        await interaction.response.defer()
+        player = await Player.load_player(interaction.user.name, db)
+        if not player:
+            error_message = "Player not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
+        dungeon = Dungeon.load_dungeon(player, db)
+        if not dungeon:
+            error_message = "Dungeon not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
+        player.dungeon = dungeon  
+        fleeing_response = player.flee(db)
+        player.save_player(db)
+        dungeon.delete_dungeon(db)
+        await interaction.followup.send(content=fleeing_response)
+        
+    except Exception as e: 
+        print(f"An error occurred: {e}")
+        error_message = "An error occurred while trying to flee. Please try again."
+        error_message += f"\nError Details: {e}" 
+        await interaction.followup.send(content=error_message)
+
 def main():
     intents = discord.Intents.default()
     bot = DungeonBot(intents=intents)
@@ -180,6 +208,10 @@ def main():
     @bot.tree.command(name="equip")
     async def equip_cmd(interaction):
         await equip(interaction, db=db)
+
+    @bot.tree.command(name="flee")
+    async def flee_cmd(interaction):
+        await flee(interaction, db=db)
 
     bot.run(TOKEN)
 
