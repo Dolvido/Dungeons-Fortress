@@ -70,11 +70,14 @@ class Player:
     def clear_treasures(self, db):
         # Get the reference to the player's document in Firestore
         # Adjust the path according to your Firestore structure
-        player_doc_ref = db.collection('players').document(self.name)
+        player_doc_ref = db.collection('players').document(self.name).collection('treasures')
 
-        # Update the player's document to clear the treasures field
-        # This assumes the treasures are stored in a field named 'treasures'
-        player_doc_ref.update({'treasures': firestore.DELETE_FIELD})
+        # Run a query to fetch all the treasure documents for the given player
+        treasures_snapshot = player_doc_ref.stream()
+
+        # Iterate through the snapshot and delete each document (treasure)
+        for treasure_doc in treasures_snapshot:
+            treasure_doc.reference.delete()
 
         print(f"Treasures cleared for player {self.name}")
 
