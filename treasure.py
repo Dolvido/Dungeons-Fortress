@@ -4,15 +4,19 @@ import json
 class Treasure:
     # A class to represent different types of treasures
     rarity_levels = ['Common', 'Uncommon', 'Rare', 'Very rare', 'Legendary']
-    def __init__(self, treasure_type, material, origin, rarity, value, defense_value=None):
+    def __init__(self, treasure_type, material, origin):
         self.treasure_type = treasure_type  # e.g., jewel, artifact, scroll, potion, grimoire
         self.material = material  # e.g., gold, silver, diamond, ruby
         self.origin = origin  # e.g., dwarven, elvish, dragon hoard
         self.rarity = random.choice(self.rarity_levels)
         self.value = self.rarity_levels.index(self.rarity) * 10  # set the value based on rarity, adjust as needed
 
-        self.defense_value = defense_value if treasure_type == 'armor' else None
 
+        # if generated treasure is armor, set the defense value  based off rarity
+        if treasure_type == 'armor':
+            self.defense_value = self.rarity_levels.index(self.rarity) * 10
+        else:
+            self.defense_value = None
         
     def __str__(self):
         return f"{self.rarity} {self.material.capitalize()} {self.treasure_type.capitalize()} of {self.origin.capitalize()} origin valued at {self.value} doubloons"

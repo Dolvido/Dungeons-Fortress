@@ -200,7 +200,7 @@ class Dungeon:
         discovered_treasure = Treasure(treasure_type, material, origin)
             
         # Add the treasure to the player's inventory
-        self.player.add_to_inventory(discovered_treasure)
+        self.player.add_to_inventory(discovered_treasure, db)
             
         # Add the treasure discovery to the scene description
         response = f"\nYou discovered a {discovered_treasure}!"

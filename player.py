@@ -16,12 +16,12 @@ class Player:
         self.health = 100
         self.max_base_damage = 10
         self.inventory = []
+        self.armor = None
 
     def get_stats(self):
         return self.exp, self.health
 
     def take_damage(self, damage, db):
-        base_damage = random.randint(1, self.max_base_damage)  # Random base damage up to max_base_damage
         if self.armor is not None:
             # If player has armor equipped, reduce the damage taken
             damage -= self.armor.defense_value

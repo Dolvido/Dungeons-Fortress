@@ -134,6 +134,24 @@ async def inventory(interaction, db):
         error_message += f"\nError Details: {e}"  # Adding error details for more context
         await interaction.followup.send(content=error_message)
 
+async def equip(interaction, db):
+    try:
+        await interaction.response.defer()
+        player = await Player.load_player(interaction.user.name, db)
+        if not player:
+            error_message = "Player not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
+        inventory_index = interaction.data.options[0].get('value')  # Assuming that index of inventory item to equip is passed
+        equip_response = player.equip_armor(inventory_index)
+        player.save_player(db)
+        await interaction.followup.send(content=equip_response)
+    except Exception as e:  # Catching exceptions generically should be the last resort
+        print(f"An error occurred: {e}")
+        error_message = "An error occurred while equipping the item. Please try again."
+        error_message += f"\nError Details: {e}"  # Adding error details for more context
+        await interaction.followup.send(content=error_message)
 
 def main():
     intents = discord.Intents.default()
@@ -149,6 +167,10 @@ def main():
         await continue_command(interaction, db=db)
 
     @bot.tree.command(name="inventory")
+    async def inventory_cmd(interaction):
+        await inventory(interaction, db=db)
+
+    @bot.tree.command(name="equip")
     async def inventory_cmd(interaction):
         await inventory(interaction, db=db)
 
