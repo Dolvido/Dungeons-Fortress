@@ -47,9 +47,20 @@ async def start(interaction, db):
         player.save_player(db)
         dungeon.save_dungeon(db)  # Added the db argument
         await interaction.followup.send(content=response)
-    except Exception as e:
+    
+    except FileNotFoundError as e:
+        print(f"File not found error: {e}")
+    except KeyError as e:
+        print(f"Key error: {e}")
+    except ValueError as e:
+        print(f"Value error: {e}")
+    except Exception as e:  # Catching other types of exceptions generically should be the last resort
+    
         print(f"An error occurred: {e}")
+        
         error_message = "An error occurred while starting the dungeon. Please try again later."
+        error_message += f"\nError Details: {e}"  # Adding error details for more context
+    
         await interaction.followup.send(content=error_message)
 
 
@@ -73,9 +84,20 @@ async def continue_command(interaction, db):
         player.save_player(db)
         dungeon.save_dungeon(db)
         await interaction.followup.send(content=response)
-    except Exception as e:
+    
+    except FileNotFoundError as e:
+        print(f"File not found error: {e}")
+    except KeyError as e:
+        print(f"Key error: {e}")
+    except ValueError as e:
+        print(f"Value error: {e}")
+    except Exception as e:  # Catching other types of exceptions generically should be the last resort
+    
         print(f"An error occurred: {e}")
+        
         error_message = "An error occurred while continuing the dungeon. Please try again later."
+        error_message += f"\nError Details: {e}"  # Adding error details for more context
+    
         await interaction.followup.send(content=error_message)
 
 
@@ -97,9 +119,21 @@ async def inventory(interaction, db):
             embed.description = "Your inventory is empty."
             
         await interaction.followup.send(embed=embed)
-    except Exception as e:
+    
+    except FileNotFoundError as e:
+        print(f"File not found error: {e}")
+    except KeyError as e:
+        print(f"Key error: {e}")
+    except ValueError as e:
+        print(f"Value error: {e}")
+    except Exception as e:  # Catching other types of exceptions generically should be the last resort
+    
         print(f"An error occurred while displaying the inventory: {e}")
-        await interaction.followup.send(content="An error occurred while retrieving your inventory.")
+        
+        error_message = "An error occurred while retrieving your inventory."
+        error_message += f"\nError Details: {e}"  # Adding error details for more context
+        await interaction.followup.send(content=error_message)
+    
 
 
 def main():

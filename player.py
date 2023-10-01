@@ -42,7 +42,8 @@ class Player:
         self.delete_treasures(db)
         
         # Print out the inventory before it's lost
-        if self.inventory:
+        
+        if self.inventory:    
             treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items if items])
             lost_treasures = f"You've lost all your treasures: {treasures}"
         else:

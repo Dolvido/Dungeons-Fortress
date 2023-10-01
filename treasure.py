@@ -22,8 +22,9 @@ class Treasure:
             return "You unrolled the scroll and read the mystical writings."
         elif self.treasure_type == "potion":
             return "You drank the potion. You feel its magical energy course through your body."
-        else:
-            return f"You used the {self.material} {self.treasure_type}."
+        else:       
+            return f"You used the {self.material} {self.treasure_type}. Its {self.rarity} rarity sparkles with the mystique of its {self.origin} origin."
+    
 
     def to_dict(self):
         """
@@ -38,5 +39,16 @@ class Treasure:
         }
 
     @staticmethod
-    def from_dict(data):
-        return Treasure(data['treasure_type'], data['material'], data['origin'], data['rarity'], data['value'])
+    def from_dict(data):  
+        try:
+            return Treasure(
+                data.get('treasure_type', 'Unknown'), 
+                data.get('material', 'Unknown'), 
+                data.get('origin', 'Unknown'), 
+                data.get('rarity', 'Unknown'), 
+                data.get('value', 'Unknown')
+            )
+        except Exception as e:
+            print(f"Error creating Treasure from dictionary: {e}")
+            return None  # Returning None if there is an error, can be handled by the calling code
+        
