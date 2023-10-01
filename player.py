@@ -14,7 +14,7 @@ class Player:
         self.doubloons = 0
         self.health = 100
         self.max_base_damage = 10
-        self.inventory = {}
+        self.inventory = []
 
     def get_stats(self):
         return self.exp, self.health
@@ -205,13 +205,25 @@ class Player:
         else:
             return None
 
-    def add_to_inventory(self, category, item):
+    def __str__(self):
+        inventory = ', '.join(str(item) for item in self.inventory)
+        return f"Player: {self.name}, Level: {self.level}, Health: {self.health}, Inventory: [{inventory}]"
+            
+    def add_to_inventory(self, treasure):
         """
-        Add the item to the player's inventory under the given category.
+        Add the treasure object to the player's inventory.
         """
-        if category not in self.inventory:
-            self.inventory[category] = []
-        self.inventory[category].append(item)
+        self.inventory.append(treasure)
+            
+    def use_treasure(self, index):
+        """
+        Use a treasure from the inventory based on its index.
+        """
+        if 0 <= index < len(self.inventory):
+            treasure = self.inventory.pop(index)  # Remove and get the treasure from the inventory
+            return treasure.use()
+        else:
+            return "Invalid index. No such treasure in the inventory."
 
 
 

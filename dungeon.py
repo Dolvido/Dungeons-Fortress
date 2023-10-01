@@ -3,6 +3,7 @@ from langchain.memory import ConversationBufferMemory, ChatMessageHistory
 from langchain.prompts import PromptTemplate
 
 from firebase_admin import firestore
+from treasure import Treasure
 
 import random
 
@@ -101,7 +102,7 @@ class Dungeon:
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                     model_kwargs={
                                         "temperature": random_temperature,
-                                        "max_new_tokens": 250
+                                        "max_new_tokens": 100
                                     })
         
         enemy_attributes = {
@@ -114,7 +115,7 @@ class Dungeon:
 
         enemy_assembled_string = f'A {enemy_attributes["appearance"]} {enemy_attributes["type"]} wielding a {enemy_attributes["weapon"]} with {enemy_attributes["strength"]}, but has a {enemy_attributes["weakness"]}'
         print("Enemy string: " + enemy_assembled_string)
-        generate_enemy_prompt = "{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat. The enemy that emerges from the shadows to challenge the hero is a {enemy}."
+        generate_enemy_prompt = "{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat. The enemy that emerges from the shadows to challenge the hero is a {enemy}. Describe the enemy in detail."
         llm_enemy_prompt = PromptTemplate(template=generate_enemy_prompt, input_variables=["adventure_history", "enemy"])
 
         print("generating enemy")
@@ -131,9 +132,11 @@ class Dungeon:
             combat_narrative = self.get_defeat_narrative(enemy_assembled_string)
 
         response = f"\nCOMBAT ENCOUNTER\n"
+        response += f"Enemy: {enemy_assembled_string}\n"
+
         response += enemy_description
         response += combat_narrative
-        response += combat_message
+        response += "\n"+combat_message
 
         return response
 
@@ -144,7 +147,7 @@ class Dungeon:
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                         model_kwargs={
                                             "temperature": random_temperature,
-                                            "max_new_tokens": 250
+                                            "max_new_tokens": 100
                                         })
 
         victory_prompt = "{adventure_history} The hero, with unmatched bravery and skill, faces the {enemy_description}. Describe the epic moment the hero vanquishes the beast."
@@ -162,7 +165,7 @@ class Dungeon:
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                         model_kwargs={
                                             "temperature": random_temperature,
-                                            "max_new_tokens": 250
+                                            "max_new_tokens": 100
                                         })
         
         defeat_prompt = "{adventure_history} Despite the hero's valiant efforts, the {enemy_description} proves to be too powerful. Describe the tragic moment the hero is defeated by the beast."
@@ -184,19 +187,24 @@ class Dungeon:
             repo_id=self.repo_id_llm,
             model_kwargs={
                 "temperature": random_temperature,
-                "max_new_tokens": 250
+                "max_new_tokens": 150
             }
         )
 
-        treasure_attributes = {
-            "material": random.choice(["golden", "silver", "crystalline", "jewel-encrusted", "ancient stone"]),
-            "type": random.choice(["chest", "statue", "amulet", "crown", "sword"]),
-            "adornment": random.choice(["intricate runes", "mystical symbols", "gemstones", "ancient inscriptions", "magical glyphs"]),
-            "era": random.choice(["Elvish", "Dwarven", "Ancient Human", "Lost Civilization", "Mythical"]),
-            "power": random.choice(["enigmatic magical aura", "curse of eternal slumber", "blessing of invincibility", "power of foresight", "charm of endless wealth"])
-        }
+        treasure_type = random.choice(["jewel", "artifact", "scroll", "potion", "grimoire"])
+        material = random.choice(["gold", "silver", "diamond", "ruby"])
+        origin = random.choice(["dwarven", "elvish", "dragon hoard"])
+        magical_properties = {"health boost": "+20 HP"}  # This should be expanded
+            
+        # Create a Treasure object
+        discovered_treasure = Treasure(treasure_type, material, origin, magical_properties)
+            
+        # Add the treasure to the player's inventory
+        self.player.add_to_inventory(discovered_treasure)
+            
+        # Add the treasure discovery to the scene description
+        response = f"\nYou discovered a {discovered_treasure}!"
 
-        treasure_assembled_string = f'{treasure_attributes["material"]} {treasure_attributes["type"]} adorned with {treasure_attributes["adornment"]}, an artifact of the {treasure_attributes["era"]} era, believed to possess {treasure_attributes["power"]}'
         
         generate_treasure_prompt = "{adventure_history} In the depths of the ancient and mystical dungeon, amidst the eerie silence punctuated by the echoes of distant roars and clanks, a hidden chamber reveals itself. Shrouded in mystery, it harbors a {treasure}."  # Changed {treasure_assembled_string} to {treasure}
         llm_treasure_prompt = PromptTemplate(template=generate_treasure_prompt,
@@ -204,11 +212,10 @@ class Dungeon:
 
         # Create language model chain and run against our prompt
         treasure_chain = LLMChain(prompt=llm_treasure_prompt, llm=dungeon_llm, memory=self.memory)
-        generated_treasure = treasure_chain.predict(treasure=treasure_assembled_string)  # Changed {treasure_assembled_string={treasure_assembled_string}} to treasure=treasure_assembled_string
+        generated_treasure = treasure_chain.predict(treasure=str(discovered_treasure))  # Changed {treasure_assembled_string={treasure_assembled_string}} to treasure=treasure_assembled_string
 
         # Add the treasure to the player's inventory and database
-        self.player.add_to_inventory('treasures', treasure_attributes, db)
-        self.add_treasure_to_db(treasure_attributes, db)
+        self.add_treasure_to_db(discovered_treasure, db)
 
         response = "\nTREASURE ROOM\n" + generated_treasure
         return response
@@ -239,7 +246,28 @@ class Dungeon:
 
         response = "\nEMPTY ROOM\n" + generated_description
         return response
+    
+    def add_treasure_to_db(self, treasure, db):
+        """
+        Add the treasure to the database.
+        """
+        # Convert the Treasure object to a dictionary
+        print(type(treasure))
+        treasure_data = treasure.to_dict()
+        print(type(treasure_data))
 
+        # Here add the logic to store the treasure_data dictionary in the database
+        # This will depend on the exact database and structure you are using
+        # For example, if using Firebase Firestore:
+        # Then, store the dictionary in the Firestore database
+        try:
+            # Replace this with the actual path where you want to store the treasure data
+            db.collection('players').document(self.player.name).collection('treasures').add(treasure_data)
+            return "Treasure added to the database!"
+        except Exception as e:
+            return f"An error occurred when adding treasure to database: {e}"
+        return "Treasure added to the database!"
+    
     def end_of_continue_adventure_phase(self, db):
         """
         Called at the end of continue_adventure function to update threat level and dungeon state in the database.
@@ -256,7 +284,7 @@ class Dungeon:
         self.threat_level *= self.threat_level_multiplier
         print("calculated threat level: " + str(self.threat_level))
         self.threat_level = min(self.threat_level, self.max_threat_level)
-        dungeon_ref = self.db.collection('dungeons').document(self.player.name)
+        dungeon_ref = db.collection('dungeons').document(self.player.name)
         dungeon_ref.update({'threat_level': self.threat_level})
 
     @staticmethod
