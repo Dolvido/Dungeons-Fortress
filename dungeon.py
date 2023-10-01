@@ -29,9 +29,10 @@ class Dungeon:
         dungeon_ref.delete()
 
 
-    def start(self):
+    def start(self, db):
         self.depth = 0
         self.threat_level = 1
+        self.save_dungeon(self.db)
         random_temperature = random.uniform(0.01, 1.0)
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
@@ -122,7 +123,7 @@ class Dungeon:
         enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm, memory=self.memory)
         enemy_description = enemy_chain.predict(enemy=enemy_assembled_string)
 
-        combat_status, combat_message = self.player.handle_combat(self.threat_level * 5, db)
+        combat_status, combat_message = self.player.handle_combat(self.threat_level, db)
 
         print("generating narrative")
         print("enemy description: " + enemy_description)
@@ -194,10 +195,9 @@ class Dungeon:
         treasure_type = random.choice(["jewel", "artifact", "scroll", "potion", "grimoire"])
         material = random.choice(["gold", "silver", "diamond", "ruby"])
         origin = random.choice(["dwarven", "elvish", "dragon hoard"])
-        magical_properties = {"health boost": "+20 HP"}  # This should be expanded
             
         # Create a Treasure object
-        discovered_treasure = Treasure(treasure_type, material, origin, magical_properties)
+        discovered_treasure = Treasure(treasure_type, material, origin)
             
         # Add the treasure to the player's inventory
         self.player.add_to_inventory(discovered_treasure)
@@ -217,7 +217,10 @@ class Dungeon:
         # Add the treasure to the player's inventory and database
         self.add_treasure_to_db(discovered_treasure, db)
 
-        response = "\nTREASURE ROOM\n" + generated_treasure
+        response = "\nTREASURE ROOM\n"
+        response += f"\nYou discovered a {discovered_treasure}!"
+        response += generated_treasure
+
         return response
 
     def no_encounter_operation(self, db):

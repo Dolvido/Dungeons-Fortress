@@ -43,7 +43,7 @@ async def start(interaction, db):
             dungeon = Dungeon(player, db)
 
         player.dungeon = dungeon  
-        response = dungeon.start()
+        response = dungeon.start(db)
         player.save_player(db)
         dungeon.save_dungeon(db)  # Added the db argument
         await interaction.followup.send(content=response)
