@@ -1,5 +1,6 @@
 import random
 from firebase_admin import firestore
+from treasure import Treasure
 import json
 
 
