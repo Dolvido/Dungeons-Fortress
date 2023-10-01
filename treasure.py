@@ -1,4 +1,5 @@
 import random
+import json
 
 class Treasure:
     # A class to represent different types of treasures
@@ -30,3 +31,9 @@ class Treasure:
             "origin": self.origin,
             "magical_properties": self.magical_properties
         }
+
+    @staticmethod
+    def from_dict(data):
+        # if 'magical_properties' is a dict, unpack it
+        magical_properties = json.loads(data['magical_properties']) if isinstance(data.get('magical_properties', None), str) else data.get('magical_properties', None)
+        return Treasure(data['treasure_type'], data['material'], data['origin'], magical_properties)

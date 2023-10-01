@@ -151,8 +151,33 @@ class Player:
         return player
     
     def save_player(self, db):
+        # Convert inventory to a format Firestore understands
+        firestore_inventory = {}
+        for category, items in self.inventory.items():
+            firestore_inventory[category] = [item.to_dict() for item in items]
+        
+        # Replace the inventory with the Firestore format
+        firestore_player = self.to_dict()
+        firestore_player['inventory'] = firestore_inventory
+
         player_ref = db.collection('players').document(self.name)
-        player_ref.set(self.to_dict(), merge=True)
+        player_ref.set(firestore_player, merge=True)
+
+    def load_player_inventory(self, db):
+        # Load player's treasures from the database
+        treasure_ref = db.collection('treasures').document(self.name)
+        treasure_doc = treasure_ref.get()
+
+        if treasure_doc.exists:
+            treasures_data = treasure_doc.to_dict()
+            print(f"Treasures Data from DB: {treasures_data}")  # Debug print
+            self.inventory = [
+                Treasure.from_dict(treasure_data)
+                for treasure_data in treasures_data.get('treasures', [])
+            ]
+            print(f"Player's Inventory after Assignment: {self.inventory}")  # Debug print
+        else:
+            self.inventory = []
 
     @classmethod
     async def load_player(cls, player_name, db):
@@ -181,21 +206,6 @@ class Player:
             player = cls(name=player_name)
             player.save_player(db)
             return player
-
-    def load_player_inventory(self, db):
-        # Load player's treasures from the database
-        treasure_ref = db.collection('treasures').document(self.name)
-        treasure_doc = treasure_ref.get()
-
-        if treasure_doc.exists:
-            treasures_data = treasure_doc.to_dict()
-            print(f"Treasures Data from DB: {treasures_data}")  # Debug print
-            self.inventory = treasures_data.get('treasures', [])
-            print(f"Player's Inventory after Assignment: {self.inventory}")  # Debug print
-        else:
-            self.inventory = []
-
-
 
     async def get_stats_from_db(self, db):
         player_ref = db.collection('players').document(self.name)
