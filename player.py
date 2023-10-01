@@ -152,17 +152,23 @@ class Player:
         return player
     
     def save_player(self, db):
-        # Convert inventory to a format Firestore understands
-        firestore_inventory = {}
-        for category, items in self.inventory.items():
-            firestore_inventory[category] = [item.to_dict() for item in items]
-        
-        # Replace the inventory with the Firestore format
-        firestore_player = self.to_dict()
-        firestore_player['inventory'] = firestore_inventory
+        try:
+            # Ensure inventory is not empty and items can be converted to dict
+            if self.inventory and all(hasattr(item, 'to_dict') for item in self.inventory):
+                firestore_inventory = [item.to_dict() for item in self.inventory]
+                
+                # Replace the inventory with the Firestore format
+                firestore_player = self.to_dict()
+                firestore_player['inventory'] = firestore_inventory
 
-        player_ref = db.collection('players').document(self.name)
-        player_ref.set(firestore_player, merge=True)
+                player_ref = db.collection('players').document(self.name)
+                player_ref.set(firestore_player, merge=True)
+                print(f"Player {self.name} saved to Firestore")
+            else:
+                print(f"Player {self.name} has an empty inventory or inventory items cannot be converted to dict")
+        except Exception as e:
+            print(f"An error occurred within save_player: {e}")
+            print(f"Player {self.name} not saved to Firestore")
 
     def load_player_inventory(self, db):
         # Load player's treasures from the database
