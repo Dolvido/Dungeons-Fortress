@@ -22,7 +22,10 @@ class Player:
 
     def take_damage(self, damage, db):
         base_damage = random.randint(1, self.max_base_damage)  # Random base damage up to max_base_damage
-        self.health -= damage
+        if self.armor is not None:
+            # If player has armor equipped, reduce the damage taken
+            damage -= self.armor.defense_value
+        self.health = max(self.health - damage, 0)
         self.health = max(0, self.health)  # Ensure health does not go below 0
 
         response = f"\nYou took {damage} damage and have {self.health} health remaining."
@@ -253,6 +256,20 @@ class Player:
             return treasure.use()
         else:
             return "Invalid index. No such treasure in the inventory."
+        
+    def equip_armor(self, index):
+        """
+        Equip a armor from the inventory based on its index.
+        """
+        if 0 <= index < len(self.inventory) and self.inventory[index].treasure_type == 'armor':
+            if self.armor is not None:
+                # If another armor is already equipped, put it back to the inventory
+                self.inventory.append(self.armor)
+            # Equip the new armor and remove it from the inventory
+            self.armor = self.inventory.pop(index)  
+        else:
+            return "Invalid index or the chosen item is not a armor."
+
 
 
 

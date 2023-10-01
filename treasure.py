@@ -3,17 +3,19 @@ import json
 
 class Treasure:
     # A class to represent different types of treasures
-    
-    def __init__(self, treasure_type, material, origin, rarity, value):
+    rarity_levels = ['Common', 'Uncommon', 'Rare', 'Very rare', 'Legendary']
+    def __init__(self, treasure_type, material, origin, rarity, value, defense_value=None):
         self.treasure_type = treasure_type  # e.g., jewel, artifact, scroll, potion, grimoire
         self.material = material  # e.g., gold, silver, diamond, ruby
         self.origin = origin  # e.g., dwarven, elvish, dragon hoard
-        self.rarity = rarity  # rarity of the treasure
-        self.value = value  # value of the treasure
+        self.rarity = random.choice(self.rarity_levels)
+        self.value = self.rarity_levels.index(self.rarity) * 10  # set the value based on rarity, adjust as needed
+
+        self.defense_value = defense_value if treasure_type == 'armor' else None
+
         
     def __str__(self):
-        # A string representation of the treasure with its details
-        return f"{self.material} {self.treasure_type} of {self.origin} origin rated as {self.rarity} rarity with a value of {self.value} "
+        return f"{self.rarity} {self.material.capitalize()} {self.treasure_type.capitalize()} of {self.origin.capitalize()} origin valued at {self.value} doubloons"
         
     def use(self):
         # A method to use or activate the treasure and apply its effects
@@ -35,20 +37,17 @@ class Treasure:
             "material": self.material,
             "origin": self.origin,
             "rarity": self.rarity,
-            "value": self.value
+            "value": self.value,
+            "defense_value": self.defense_value
         }
 
     @staticmethod
     def from_dict(data):  
-        try:
-            return Treasure(
-                data.get('treasure_type', 'Unknown'), 
-                data.get('material', 'Unknown'), 
-                data.get('origin', 'Unknown'), 
-                data.get('rarity', 'Unknown'), 
-                data.get('value', 'Unknown')
-            )
-        except Exception as e:
-            print(f"Error creating Treasure from dictionary: {e}")
-            return None  # Returning None if there is an error, can be handled by the calling code
-        
+        return Treasure(
+            data.get('treasure_type', 'Unknown'), 
+            data.get('material', 'Unknown'), 
+            data.get('origin', 'Unknown'), 
+            data.get('rarity', 'Unknown'), 
+            data.get('value', 'Unknown'),
+            data.get('defense_value')
+        )        

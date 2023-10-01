@@ -107,33 +107,32 @@ async def inventory(interaction, db):
         player = await Player.load_player(interaction.user.name, db)
         inventory = await player.get_inventory(db)
         embed = discord.Embed(title="Your Inventory", color=0x00ff00)
-            
+                
         if inventory:
             for item in inventory:
                 # Assuming the Treasure object has a __str__() method
-                item_description = str(item)  
+                item_name = f"{item.material} {item.treasure_type}" 
+                item_description = f"Origin: {item.origin}\nRarity: {item.rarity}\nValue: {item.value}"  
 
-                    
-                embed.add_field(name=f"{item.treasure_type}", value=f"{item_description}", inline=False)
+                        
+                embed.add_field(name=f"Item: {item_name}", value=f"{item_description}", inline=False)
         else:
             embed.description = "Your inventory is empty."
-            
+                
         await interaction.followup.send(embed=embed)
-    
+        
     except FileNotFoundError as e:
         print(f"File not found error: {e}")
     except KeyError as e:
         print(f"Key error: {e}")
     except ValueError as e:
         print(f"Value error: {e}")
-    except Exception as e:  # Catching other types of exceptions generically should be the last resort
-    
-        print(f"An error occurred while displaying the inventory: {e}")
-        
-        error_message = "An error occurred while retrieving your inventory."
+    except Exception as e:  # Cat
+        print(f"An error occurred: {e}")
+            
+        error_message = "An error occurred while displaying the inventory."
         error_message += f"\nError Details: {e}"  # Adding error details for more context
         await interaction.followup.send(content=error_message)
-    
 
 
 def main():
