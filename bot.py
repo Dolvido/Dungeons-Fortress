@@ -83,20 +83,23 @@ async def inventory(interaction, db):
     try:
         await interaction.response.defer()
         player = await Player.load_player(interaction.user.name, db)
-        inventory = player.get_inventory()
+        inventory = await player.get_inventory(db)
         embed = discord.Embed(title="Your Inventory", color=0x00ff00)
+            
         if inventory:
-            for category, items in inventory.items():
-                for item in items:
-                    embed.add_field(name=f"{category.title()}", value=f"{item}", inline=False)
+            for item in inventory:
+                # Assuming the Treasure object has a __str__() method
+                item_description = str(item)  
+
+                    
+                embed.add_field(name=f"{item.treasure_type}", value=f"{item_description}", inline=False)
         else:
             embed.description = "Your inventory is empty."
-        
+            
         await interaction.followup.send(embed=embed)
     except Exception as e:
-        print(f"An error occurred: {e}")
-        error_message = "An error occurred while retrieving the inventory. Please try again later."
-        await interaction.followup.send(content=error_message)
+        print(f"An error occurred while displaying the inventory: {e}")
+        await interaction.followup.send(content="An error occurred while retrieving your inventory.")
 
 
 def main():

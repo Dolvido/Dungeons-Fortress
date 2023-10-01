@@ -122,7 +122,7 @@ class Dungeon:
         enemy_chain = LLMChain(prompt=llm_enemy_prompt, llm=dungeon_llm, memory=self.memory)
         enemy_description = enemy_chain.predict(enemy=enemy_assembled_string)
 
-        combat_status, combat_message = self.player.handle_combat(self.threat_level, db)
+        combat_status, combat_message = self.player.handle_combat(self.threat_level * 5, db)
 
         print("generating narrative")
         print("enemy description: " + enemy_description)

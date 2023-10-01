@@ -36,9 +36,13 @@ class Player:
 
     def die(self, db):
         death_message = "You have died."
-        self.clear_treasures(db)  # Clear the player's treasures
+
+        # Clear inventory and treasures in database
+        self.clear_treasures(db)
+        self.delete_treasures(db)
+        
         # Print out the inventory before it's lost
-        if self.inventory and any(self.inventory.values()):
+        if self.inventory:
             treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items if items])
             lost_treasures = f"You've lost all your treasures: {treasures}"
         else:
@@ -46,7 +50,6 @@ class Player:
 
         # Now reset the player's state including the inventory
         self.reset_player()
-        self.delete_treasures(db)
 
         return death_message, lost_treasures
 
@@ -77,11 +80,6 @@ class Player:
             self.inventory[category] = []
         self.inventory[category].append(item)
         self.save_player(db)
-        
-
-    async def get_inventory(self):
-        await self.load_player_inventory()  # Load the inventory from the database
-        return self.inventory
 
     def reset_player(self):
         self.exp = 0
@@ -153,8 +151,13 @@ class Player:
     
     def save_player(self, db):
         try:
+            print(f"Saving player {self.name}")
+
+            print(f"Player's Inventory before Assignment: {self.inventory}")
+            print(f"Player's Inventory Type: {type(self.inventory)}")
+
             # Ensure inventory is not empty and items can be converted to dict
-            if self.inventory and all(hasattr(item, 'to_dict') for item in self.inventory):
+            for item in self.inventory:
                 firestore_inventory = [item.to_dict() for item in self.inventory]
                 
                 # Replace the inventory with the Firestore format
@@ -171,21 +174,27 @@ class Player:
             print(f"Player {self.name} not saved to Firestore")
 
     def load_player_inventory(self, db):
-        # Load player's treasures from the database
-        treasure_ref = db.collection('treasures').document(self.name)
-        treasure_doc = treasure_ref.get()
+        try:
+            # Load player's treasures from the database
+            treasures_ref = db.collection('players').document(self.name).collection('treasures')
+            treasures_docs = treasures_ref.stream()
 
-        if treasure_doc.exists:
-            treasures_data = treasure_doc.to_dict()
-            print(f"Treasures Data from DB: {treasures_data}")  # Debug print
-            self.inventory = [
-                Treasure.from_dict(treasure_data)
-                for treasure_data in treasures_data.get('treasures', [])
-            ]
-            print(f"Player's Inventory after Assignment: {self.inventory}")  # Debug print
-        else:
             self.inventory = []
+            for treasure_doc in treasures_docs:
+                if treasure_doc.exists:
+                    treasure_data = treasure_doc.to_dict()
+                    print(f"Treasure Data from DB: {treasure_data}")  # Debug print
+                    self.inventory.append(Treasure.from_dict(treasure_data))
 
+            print(f"Player's Inventory after Loading: {self.inventory}")  # Debug print
+        except Exception as e:
+            print(f"An error occurred within load_player_inventory: {e}")
+            print(f"Player {self.name} not loaded from Firestore")
+
+    async def get_inventory(self, db):
+        self.load_player_inventory(db)  # Load the inventory from the database
+        return self.inventory
+    
     @classmethod
     async def load_player(cls, player_name, db):
         # Asynchronously load player data from the database
