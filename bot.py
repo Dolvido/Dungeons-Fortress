@@ -109,13 +109,14 @@ async def inventory(interaction, db):
         embed = discord.Embed(title="Your Inventory", color=0x00ff00)
                 
         if inventory:
+            idx = 1
             for item in inventory:
                 # Assuming the Treasure object has a __str__() method
-                item_name = f"{item.material} {item.treasure_type}" 
+                item_name = f"{idx}: {item.material} {item.treasure_type}" 
                 item_description = f"Origin: {item.origin}\nRarity: {item.rarity}\nValue: {item.value}"  
-
                         
                 embed.add_field(name=f"Item: {item_name}", value=f"{item_description}", inline=False)
+                idx += 1
         else:
             embed.description = "Your inventory is empty."
                 
@@ -143,7 +144,13 @@ async def equip(interaction, db):
             await interaction.followup.send(content=error_message)
             return
 
-        inventory_index = interaction.data.options[0].get('value')  # Assuming that index of inventory item to equip is passed
+        if isinstance(interaction.data, dict) and 'options' in interaction.data:
+            inventory_index = interaction.data['options'][0].get('value')  # Assuming that index of inventory item to equip is passed
+        else:
+            error_message = "Invalid command format. Please use the correct format to equip item."
+            await interaction.followup.send(content=error_message)
+            return
+
         equip_response = player.equip_armor(inventory_index)
         player.save_player(db)
         await interaction.followup.send(content=equip_response)
@@ -171,8 +178,8 @@ def main():
         await inventory(interaction, db=db)
 
     @bot.tree.command(name="equip")
-    async def inventory_cmd(interaction):
-        await inventory(interaction, db=db)
+    async def equip_cmd(interaction):
+        await equip(interaction, db=db)
 
     bot.run(TOKEN)
 

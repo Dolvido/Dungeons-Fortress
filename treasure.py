@@ -46,12 +46,14 @@ class Treasure:
         }
 
     @staticmethod
-    def from_dict(data):  
-        return Treasure(
-            data.get('treasure_type', 'Unknown'), 
-            data.get('material', 'Unknown'), 
-            data.get('origin', 'Unknown'), 
-            data.get('rarity', 'Unknown'), 
-            data.get('value', 'Unknown'),
-            data.get('defense_value')
-        )        
+    def from_dict(data):
+        treasure = Treasure(
+            treasure_type = data.get("treasure_type"),
+            material = data.get("material"),
+            origin = data.get("origin")
+        )
+        # The other fields are assign separately because these are not part of init
+        treasure.rarity = data.get("rarity")
+        treasure.value = data.get("value")
+        treasure.defense_value = data.get("defense_value")
+        return treasure      

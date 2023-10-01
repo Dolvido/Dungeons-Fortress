@@ -43,11 +43,10 @@ class Player:
         # Clear inventory and treasures in database
         self.clear_treasures(db)
         self.delete_treasures(db)
-        
+            
         # Print out the inventory before it's lost
-        
         if self.inventory:    
-            treasures = ', '.join([f"{item}" for category, items in self.inventory.items() for item in items if items])
+            treasures = ', '.join([f"{item}" for item in self.inventory])
             lost_treasures = f"You've lost all your treasures: {treasures}"
         else:
             lost_treasures = "You died with no treasures in your possession."
