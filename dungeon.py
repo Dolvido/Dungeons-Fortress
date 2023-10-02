@@ -344,7 +344,6 @@ class Dungeon:
         # Check if document exists
         if doc_ref.get().exists:
             print(f"Document for player {self.player.name} already exists.")
-            return
             
         data = {
             'repo_id_llm': self.repo_id_llm,

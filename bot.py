@@ -39,8 +39,9 @@ async def start(interaction, db):
             player = Player(interaction.user.name, db)
 
         dungeon = Dungeon.load_dungeon(player, db)
-        if not dungeon:
+        if dungeon is None:
             dungeon = Dungeon(player, db)
+            dungeon.save_dungeon(db)
 
         player.dungeon = dungeon  
         response = dungeon.start(db)
