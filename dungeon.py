@@ -17,7 +17,7 @@ class Dungeon:
         self.db = db
         self.repo_id_llm = "tiiuae/falcon-7b-instruct"  # Moved to init method to avoid hard-coding in multiple places
         self.depth = 0
-        self.threat_level = None
+        self.threat_level = 1
         self.max_threat_level = 5
         self.threat_level_multiplier = 1.5
         self.escape_chance = 0.1
@@ -33,9 +33,6 @@ class Dungeon:
 
 
     def start(self, db):
-        self.depth = 0
-        self.threat_level = 1
-        self.save_dungeon(self.db)
         random_temperature = random.uniform(0.01, 1.0)
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
@@ -59,18 +56,22 @@ class Dungeon:
         return response
 
     def continue_adventure(self, db):
+        # use db ref to update depth 
         self.depth += 1
+        doc_ref = db.collection('dungeons').document(self.player.name)
+        doc_ref.update({'depth': self.depth})
+
         damage_taken = 0
         response = ""
-        print(self.player.name +'is continuing the dungeon adventure at depth ' + str(self.depth))
+        print(self.player.name +' is continuing the dungeon adventure at depth ' + str(self.depth))
 
         self.print_threat_level()
 
         weights = {
             "combat": self.threat_level,
-            "treasure": max(1, 5 - self.threat_level),
-            "nothing": max(1, 10 - self.threat_level),
-            "escape":max(1, int(self.depth * self.escape_chance))
+            "treasure": max(1, 10 - self.threat_level),
+            "nothing": max(1, 5 - self.threat_level),
+            "escape":max(1, 10 - self.threat_level)
         }
 
         encounter = random.choices(
@@ -126,7 +127,7 @@ class Dungeon:
         response += escape_room_description
         response += "\nContrary to what the dungeon has been throwing at you, this room offers you a way out. You take the chance and escape the dungeon with all your hard-earned treasures intact."
 
-        self.player.flee(db)  # Player flees the dungeon without losing any treasure
+         # Player flees the dungeon without losing any treasure
         return response
 
     def combat_operation(self, db):
@@ -301,10 +302,7 @@ class Dungeon:
             db.collection('players').document(self.player.name).collection('treasures').add(treasure_data)
             return "Treasure added to the database!"
         except Exception as e:
-            return f"An error occurred when adding treasure to database: {e}"
-        return "Treasure added to the database!"
-    
-
+            return f"An error occurred when adding treasure to database: {e}"    
 
     def update_threat_level(self, db):
         """
@@ -330,6 +328,7 @@ class Dungeon:
             d.repo_id_llm = data.get('repo_id_llm')
             d.depth = data.get('depth')
             d.threat_level = data.get('threat_level')
+            d.room_type = data.get('room_type')
             d.max_threat_level = data.get('max_threat_level')
             d.threat_level_multiplier = data.get('threat_level_multiplier')
             
@@ -351,6 +350,7 @@ class Dungeon:
             'repo_id_llm': self.repo_id_llm,
             'depth' : self.depth,
             'threat_level' : self.threat_level,
+            'room_type' : self.room_type,
             'max_threat_level' : self.max_threat_level,
             'threat_level_multiplier' : self.threat_level_multiplier
         }

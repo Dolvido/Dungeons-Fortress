@@ -202,9 +202,11 @@ async def escape(interaction, db):
             error_message = "Dungeon not found. Please start a new game."
             await interaction.followup.send(content=error_message)
             return
-            
+        
+        
+
         # Check if the player is currently in an escape room
-        if dungeon.room_type != "escape_room":
+        if dungeon.room_type != "escape":
             error_message = "You can only use /escape while you're in an escape room."
             await interaction.followup.send(content=error_message)
             return
@@ -245,6 +247,10 @@ def main():
     @bot.tree.command(name="flee")
     async def flee_cmd(interaction):
         await flee(interaction, db=db)
+    
+    @bot.tree.command(name="escape")
+    async def escape_cmd(interaction):
+        await escape(interaction, db=db)
 
     bot.run(TOKEN)
 

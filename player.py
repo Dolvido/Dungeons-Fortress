@@ -56,6 +56,9 @@ class Player:
         # Now reset the player's state including the inventory
         self.reset_player()
 
+        # finally delete the dungeon document from the db
+        self.dungeon.delete_dungeon(db)
+
         return death_message, lost_treasures
 
     def flee(self, db):
