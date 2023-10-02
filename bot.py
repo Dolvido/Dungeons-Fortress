@@ -35,7 +35,7 @@ class DungeonBot(discord.Client):
 async def start(interaction, db):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)
+        player = await Player.load_from_db(interaction.user.name, db)
         if not player:
             player = Player(interaction.user.name, db)
 
@@ -46,7 +46,7 @@ async def start(interaction, db):
 
         player.dungeon = dungeon  
         response = dungeon.start(db)
-        player.save_player(db)
+        player.save_to_db(db)
         dungeon.save_dungeon(db)  # Added the db argument
         await interaction.followup.send(content=response)
     
@@ -69,7 +69,7 @@ async def start(interaction, db):
 async def continue_command(interaction, db):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)
+        player = await Player.load_from_db(interaction.user.name, db)
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
@@ -83,7 +83,7 @@ async def continue_command(interaction, db):
 
         player.dungeon = dungeon  
         response = dungeon.continue_adventure(db)
-        player.save_player(db)
+        player.save_to_db(db)
         dungeon.save_dungeon(db)
         await interaction.followup.send(content=response)
     
@@ -106,8 +106,8 @@ async def continue_command(interaction, db):
 async def inventory(interaction, db):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)
-        inventory = await player.get_inventory(db)
+        player = await Player.load_from_db(interaction.user.name, db)
+        inventory = player.get_inventory()
         embed = discord.Embed(title="Your Inventory", color=0x00ff00)
                 
         if inventory:
@@ -141,7 +141,7 @@ async def equip(interaction, db):
     """ equip command """
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)
+        player = await Player.load_from_db(interaction.user.name, db)
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
@@ -155,7 +155,7 @@ async def equip(interaction, db):
             return
 
         equip_response = player.equip_armor(inventory_index)
-        player.save_player(db)
+        player.save_to_db(db)
         await interaction.followup.send(content=equip_response)
     except Exception as e:  # Catching exceptions generically should be the last resort
         print(f"An error occurred: {e}")
@@ -167,7 +167,7 @@ async def equip(interaction, db):
 async def flee(interaction, db):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)
+        player = await Player.load_from_db(interaction.user.name, db)
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
@@ -181,7 +181,7 @@ async def flee(interaction, db):
 
         player.dungeon = dungeon  
         fleeing_response = player.flee(db)
-        player.save_player(db)
+        player.save_to_db(db)
         dungeon.delete_dungeon(db)
         await interaction.followup.send(content=fleeing_response)
         
@@ -195,7 +195,7 @@ async def flee(interaction, db):
 async def escape(interaction, db):
     try:
         await interaction.response.defer()
-        player = await Player.load_player(interaction.user.name, db)
+        player = await Player.load_from_db(interaction.user.name, db)
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
@@ -217,7 +217,7 @@ async def escape(interaction, db):
 
         player.dungeon = dungeon
         escaping_response = player.escape(db)
-        player.save_player(db)
+        player.save_to_db(db)
         dungeon.delete_dungeon(db)
         await interaction.followup.send(content=escaping_response)
             

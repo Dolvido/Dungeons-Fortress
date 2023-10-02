@@ -118,7 +118,7 @@ class Player:
         player_ref.set(self.to_dict(), merge=True)
 
     @staticmethod
-    def load_from_db(player_name, db):
+    async def load_from_db(player_name, db):
         player_ref = db.collection('players').document(player_name)
         player_doc = player_ref.get()
         if player_doc.exists:
@@ -133,4 +133,21 @@ class Player:
 
             # Load player's treasures
             treasures_reference = db.collection('players').document(player.name).collection('treasures')
+            return player
+        else:
+            player = Player(player_name)
+            return player
+        
+    def add_to_inventory(self, treasure, db):
+        self.inventory.append(treasure)
+        self.save_to_db(db)
+
+    def escape(self, db):
+    # Implement your escape logic here
+        return "You have successfully escaped."
+    
+    def get_inventory(self):
+        return self.inventory
+        
            
+
