@@ -3,6 +3,7 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv, find_dotenv
 from firebase_admin import initialize_app, credentials, firestore
+import traceback
 
 from player import Player
 from dungeon import Dungeon
@@ -61,7 +62,7 @@ async def start(interaction, db):
         
         error_message = "An error occurred while starting the dungeon. Please try again later."
         error_message += f"\nError Details: {e}"  # Adding error details for more context
-    
+        traceback.print_exc()
         await interaction.followup.send(content=error_message)
 
 
@@ -98,7 +99,7 @@ async def continue_command(interaction, db):
         
         error_message = "An error occurred while continuing the dungeon. Please try again later."
         error_message += f"\nError Details: {e}"  # Adding error details for more context
-    
+        traceback.print_exc()
         await interaction.followup.send(content=error_message)
 
 
@@ -120,7 +121,7 @@ async def inventory(interaction, db):
                 idx += 1
         else:
             embed.description = "Your inventory is empty."
-                
+            traceback.print_exc()
         await interaction.followup.send(embed=embed)
         
     except FileNotFoundError as e:
@@ -160,6 +161,7 @@ async def equip(interaction, db):
         print(f"An error occurred: {e}")
         error_message = "An error occurred while equipping the item. Please try again."
         error_message += f"\nError Details: {e}"  # Adding error details for more context
+        traceback.print_exc()
         await interaction.followup.send(content=error_message)
 
 async def flee(interaction, db):
@@ -187,6 +189,7 @@ async def flee(interaction, db):
         print(f"An error occurred: {e}")
         error_message = "An error occurred while trying to flee. Please try again."
         error_message += f"\nError Details: {e}" 
+        traceback.print_exc()
         await interaction.followup.send(content=error_message)
 
 async def escape(interaction, db):
@@ -222,6 +225,7 @@ async def escape(interaction, db):
         print(f"An error occurred: {e}")
         error_message = "An error occurred while trying to escape. Please try again."
         error_message += f"\nError Details: {e}" 
+        traceback.print_exc()
         await interaction.followup.send(content=error_message)
 
 def main():
