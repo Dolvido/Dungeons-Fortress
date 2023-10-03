@@ -102,6 +102,11 @@ class Player:
         treasures_ref = db.collection('treasures').document(self.name)
         treasures_ref.delete()
 
+    def restore_health(self, db):
+        self.health = 100
+        self.save_to_db(db)
+
+
     def to_dict(self):
         return {
             'name': self.name,
@@ -130,6 +135,7 @@ class Player:
         # Save to Firestore
         player_ref.set(data_to_save, merge=True)
 
+
     @staticmethod
     async def load_from_db(player_name, db):
         player_ref = db.collection('players').document(player_name)
@@ -156,7 +162,11 @@ class Player:
         
     def add_to_inventory(self, treasure, db):
         self.inventory.append(treasure)
-        self.save_to_db(db)
+        # add treasure to the player document treasure collection
+        treasure_ref = db.collection('players').document(self.name).collection('treasures').document()
+        treasure_ref.set(treasure.to_dict())
+        print(f"Added {treasure} to player's inventory.")
+
 
     def escape(self, db):
     # Implement your escape logic here
