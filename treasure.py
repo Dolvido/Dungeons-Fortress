@@ -1,15 +1,18 @@
 import random
 import json
+from uuid import uuid4
 
 class Treasure:
     # A class to represent different types of treasures
     rarity_levels = ['Common', 'Uncommon', 'Rare', 'Very rare', 'Legendary']
-    def __init__(self, treasure_type, material, origin):
+    def __init__(self, treasure_type, material, origin, id=None):
         self.treasure_type = treasure_type  # e.g., jewel, artifact, scroll, potion, grimoire
         self.material = material  # e.g., gold, silver, diamond, ruby
         self.origin = origin  # e.g., dwarven, elvish, dragon hoard
         self.rarity = random.choice(self.rarity_levels)
         self.value = self.rarity_levels.index(self.rarity) * 10  # set the value based on rarity, adjust as needed
+        self.id = id if id else str(uuid4()) 
+
 
 
         # if generated treasure is armor, set the defense value  based off rarity
@@ -42,7 +45,8 @@ class Treasure:
             "origin": self.origin,
             "rarity": self.rarity,
             "value": self.value,
-            "defense_value": self.defense_value
+            "defense_value": self.defense_value,
+            "id": self.id
         }
 
     @staticmethod
@@ -50,10 +54,12 @@ class Treasure:
         treasure = Treasure(
             treasure_type = data.get("treasure_type"),
             material = data.get("material"),
-            origin = data.get("origin")
+            origin = data.get("origin"),
+            id = data.get("id")
         )
         # The other fields are assign separately because these are not part of init
         treasure.rarity = data.get("rarity")
         treasure.value = data.get("value")
         treasure.defense_value = data.get("defense_value")
+        treasure.id = data.get("id")
         return treasure      

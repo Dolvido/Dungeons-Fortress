@@ -113,8 +113,8 @@ async def inventory(interaction, db):
         if inventory:
             idx = 1
             for item in inventory:
-                item_name = f"{idx}: {item['material']} {item['treasure_type']}" 
-                item_description = f"Origin: {item['origin']}\nRarity: {item['rarity']}\nValue: {item['value']}"
+                item_name = f"{idx}: {item.material} {item.treasure_type}" 
+                item_description = f"Origin: {item.origin}\nRarity: {item.rarity}\nValue: {item.value}"
                             
                 embed.add_field(name=f"Item: {item_name}", value=f"{item_description}", inline=False)
                 idx += 1
@@ -228,6 +228,7 @@ async def escape(interaction, db):
 
 async def sell(interaction, item_index, db):
     try:
+        item_index -= 1  # Adjust for 0-based indexing
         await interaction.response.defer()
             
         print(f"Debug: Item index: {item_index}")
