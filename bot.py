@@ -206,8 +206,6 @@ async def escape(interaction, db):
             await interaction.followup.send(content=error_message)
             return
         
-        
-
         # Check if the player is currently in an escape room
         if dungeon.room_type != "escape":
             error_message = "You can only use /escape while you're in an escape room."
@@ -217,12 +215,39 @@ async def escape(interaction, db):
         player.dungeon = dungeon
         escaping_response = player.escape(db)
         player.save_to_db(db)
+        player.restore_health(db)
         dungeon.delete_dungeon(db)
         await interaction.followup.send(content=escaping_response)
             
     except Exception as e: 
         print(f"An error occurred: {e}")
         error_message = "An error occurred while trying to escape. Please try again."
+        error_message += f"\nError Details: {e}" 
+        traceback.print_exc()
+        await interaction.followup.send(content=error_message)
+
+async def sell(interaction, db):
+    try:
+        await interaction.response.defer()
+        player = await Player.load_from_db(interaction.user.name, db)
+        if not player:
+            error_message = "Player not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
+        if isinstance(interaction.data, dict) and 'options' in interaction.data:
+            # item to be sold either a number (index) or 'all'
+            item_to_sell = interaction.data['options'][0].get('value')
+                
+            # sale_response = player.sell_item(item_to_sell, db)  # Add sell_item method to the Player class
+            sale_response = "Successfully sold items."  # Placeholder response 
+            await interaction.followup.send(content= sale_response)
+        else:
+            error_message = "Invalid command format. Initiate sale with /sell followed by the item index or 'all'."
+            await interaction.followup.send(content=error_message)
+    except Exception as e:  
+        print(f"An error occurred while selling items: {e}")
+        error_message = "An error occurred during the transaction. Please try again."
         error_message += f"\nError Details: {e}" 
         traceback.print_exc()
         await interaction.followup.send(content=error_message)
@@ -255,6 +280,10 @@ def main():
     @bot.tree.command(name="escape")
     async def escape_cmd(interaction):
         await escape(interaction, db=db)
+
+    @bot.tree.command(name="sell")
+    async def sell_cmd(interaction):
+        await sell(interaction, db=db)
 
     bot.run(TOKEN)
 
