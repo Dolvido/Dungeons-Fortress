@@ -185,7 +185,7 @@ class Player:
 
             sold_treasure_ref = db.collection('players').document(self.name).collection('treasures').document(sold_item.id)
 
-            self.doubloons += sold_item['value']
+            self.doubloons += sold_item.value
                     
             # Save player's state to the database after selling an item
             sold_treasure_ref = db.collection('players').document(self.name).collection('treasures').document(sold_item.id)
@@ -193,9 +193,9 @@ class Player:
             self.save_to_db(db)
 
                     
-            return f"Sold {sold_item['treasure_type']} for {sold_item['value']} doubloons."
+            return f"Sold {sold_item.treasure_type} for {sold_item.value} doubloons."
         elif isinstance(index, str) and index.lower() == 'all':
-            total_value = sum(item['value'] for item in self.inventory)
+            total_value = sum(item.value for item in self.inventory)
             self.doubloons += total_value
             self.inventory = []
 
