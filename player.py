@@ -157,7 +157,8 @@ class Player:
             treasures_ref = db.collection('players').document(player.name).collection('treasures')
             treasures_docs = treasures_ref.get()
             print(treasures_docs)
-            player.inventory = [doc.to_dict() for doc in treasures_docs]
+            player.inventory = [Treasure.from_dict(doc.to_dict()) for doc in treasures_docs]
+
             return player
         else:
             player = Player(player_name)
@@ -179,32 +180,37 @@ class Player:
         return self.inventory
     
     def sell_item(self, index, db):
-        """
-        Sell an item from player's inventory.
+        if isinstance(index, int) and 0 <= index < len(self.inventory):
+            sold_item = self.inventory.pop(index) 
 
-        index: The index of item in player's inventory to sell. If argument is string 'all', sell all items.
-        """
-        print("entering sell_item")
-        if isinstance(index, str) and index.lower() == 'all':
-            # sell all items, update player's doubloons by total value of items, and clear inventory
-            total_value = 0
-            for treasure in self.inventory:
-                total_value += treasure['value']  # assuming treasure is a dict with a 'value' key
-            self.doubloons += total_value
-            self.inventory.clear()
+            sold_treasure_ref = db.collection('players').document(self.name).collection('treasures').document(sold_item.id)
+
+            self.doubloons += sold_item['value']
+                    
+            # Save player's state to the database after selling an item
+            sold_treasure_ref = db.collection('players').document(self.name).collection('treasures').document(sold_item.id)
+            sold_treasure_ref.delete()
             self.save_to_db(db)
+
+                    
+            return f"Sold {sold_item['treasure_type']} for {sold_item['value']} doubloons."
+        elif isinstance(index, str) and index.lower() == 'all':
+            total_value = sum(item['value'] for item in self.inventory)
+            self.doubloons += total_value
+            self.inventory = []
+
+            # Delete all treasures from the database
+            treasures_ref = db.collection('players').document(self.name).collection('treasures')
+            treasures_docs = treasures_ref.get()
+            for treasure_doc in treasures_docs:
+                treasure_doc.reference.delete()
+                    
+            # Save player's state to the database after selling all items
+            self.save_to_db(db)
+                    
             return f"All items have been sold for a total of {total_value} doubloons."
-        elif isinstance(index, int):
-            # sell a specific item, chosen by index. Update player's doubloons by the value of the sold item
-            if index < len(self.inventory) and index >= 0:
-                sold_item = self.inventory.pop(index)
-                self.doubloons += sold_item['value']  # assuming treasure is a dict with a 'value' key
-                self.save_to_db(db)
-                return f"Sold {sold_item['treasure_type']} for {sold_item['value']} doubloons."
-            else:
-                return "Invalid index. No such treasure in the inventory."
         else:
             return "Invalid command. Please enter a valid index or 'all'."
-            
-           
+                    
+                
 
