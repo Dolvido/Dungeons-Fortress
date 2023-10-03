@@ -238,7 +238,7 @@ async def sell(interaction, db):
         if isinstance(interaction.data, dict) and 'options' in interaction.data:
             # item to be sold either a number (index) or 'all'
             item_to_sell = interaction.data['options'][0].get('value')
-                
+            print(f"Item to sell: {item_to_sell}")
             # sale_response = player.sell_item(item_to_sell, db)  # Add sell_item method to the Player class
             sale_response = "Successfully sold items."  # Placeholder response 
             await interaction.followup.send(content= sale_response)

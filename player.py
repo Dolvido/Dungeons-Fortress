@@ -177,6 +177,31 @@ class Player:
     
     def get_inventory(self):
         return self.inventory
-        
+    
+    def sell_item(self, index, db):
+        """
+        Sell an item from player's inventory.
+
+        index: The index of item in player's inventory to sell. If argument is string 'all', sell all items.
+        """
+        if isinstance(index, str) and index.lower() == 'all':
+            # sell all items, update player's doubloons by total value of items, and clear inventory
+            total_value = 0
+            for treasure in self.inventory:
+                total_value += treasure['value']  # assuming treasure is a dict with a 'value' key
+            self.doubloons += total_value
+            self.inventory.clear()
+            return f"All items have been sold for a total of {total_value} doubloons."
+        elif isinstance(index, int):
+            # sell a specific item, chosen by index. Update player's doubloons by the value of the sold item
+            if index < len(self.inventory) and index >= 0:
+                sold_item = self.inventory.pop(index)
+                self.doubloons += sold_item['value']  # assuming treasure is a dict with a 'value' key
+                return f"Sold {sold_item['treasure_type']} for {sold_item['value']} doubloons."
+            else:
+                return "Invalid index. No such treasure in the inventory."
+        else:
+            return "Invalid command. Please enter a valid index or 'all'."
+            
            
 
