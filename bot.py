@@ -239,8 +239,8 @@ async def sell(interaction, db):
             # item to be sold either a number (index) or 'all'
             item_to_sell = interaction.data['options'][0].get('value')
             print(f"Item to sell: {item_to_sell}")
-            # sale_response = player.sell_item(item_to_sell, db)  # Add sell_item method to the Player class
-            sale_response = "Successfully sold items."  # Placeholder response 
+            sale_response = player.sell_item(item_to_sell, db)  # Add sell_item method to the Player class
+            #sale_response = "Successfully sold items."  # Placeholder response 
             await interaction.followup.send(content= sale_response)
         else:
             error_message = "Invalid command format. Initiate sale with /sell followed by the item index or 'all'."

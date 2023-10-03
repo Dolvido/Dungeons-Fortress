@@ -191,12 +191,14 @@ class Player:
                 total_value += treasure['value']  # assuming treasure is a dict with a 'value' key
             self.doubloons += total_value
             self.inventory.clear()
+            self.save_to_db(db)
             return f"All items have been sold for a total of {total_value} doubloons."
         elif isinstance(index, int):
             # sell a specific item, chosen by index. Update player's doubloons by the value of the sold item
             if index < len(self.inventory) and index >= 0:
                 sold_item = self.inventory.pop(index)
                 self.doubloons += sold_item['value']  # assuming treasure is a dict with a 'value' key
+                self.save_to_db(db)
                 return f"Sold {sold_item['treasure_type']} for {sold_item['value']} doubloons."
             else:
                 return "Invalid index. No such treasure in the inventory."
