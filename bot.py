@@ -109,19 +109,18 @@ async def inventory(interaction, db):
         player = await Player.load_from_db(interaction.user.name, db)
         inventory = player.get_inventory()
         embed = discord.Embed(title="Your Inventory", color=0x00ff00)
-                
+            
         if inventory:
             idx = 1
             for item in inventory:
-                # Assuming the Treasure object has a __str__() method
-                item_name = f"{idx}: {item.material} {item.treasure_type}" 
-                item_description = f"Origin: {item.origin}\nRarity: {item.rarity}\nValue: {item.value}"  
-                        
+                item_name = f"{idx}: {item['material']} {item['treasure_type']}" 
+                item_description = f"Origin: {item['origin']}\nRarity: {item['rarity']}\nValue: {item['value']}"
+                            
                 embed.add_field(name=f"Item: {item_name}", value=f"{item_description}", inline=False)
                 idx += 1
         else:
             embed.description = "Your inventory is empty."
-            traceback.print_exc()
+                
         await interaction.followup.send(embed=embed)
         
     except FileNotFoundError as e:

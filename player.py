@@ -1,6 +1,7 @@
 import random
 from firebase_admin import firestore
 from treasure import Treasure
+from dungeon import Dungeon
 
 class Player:
 
@@ -110,12 +111,24 @@ class Player:
             'doubloons': self.doubloons,
             'health': self.health,
             'max_base_damage': self.max_base_damage,
-            'inventory': [item.to_dict() for item in self.inventory],
+            'inventory': self.inventory,
         }
 
     def save_to_db(self, db):
         player_ref = db.collection('players').document(self.name)
-        player_ref.set(self.to_dict(), merge=True)
+        # Serialize Treasure objects in inventory before saving to Firestore
+        serialized_inventory = [item.to_dict() if isinstance(item, Treasure) else item for item in self.inventory]
+        # Create a copy of self.__dict__ and replace 'inventory' with the serialized version
+        data_to_save = self.__dict__.copy()
+        data_to_save['inventory'] = serialized_inventory
+        # Serialize Dungeon object if it exists
+        if isinstance(self.dungeon, Dungeon):
+            data_to_save['dungeon'] = self.dungeon.to_dict()
+        if hasattr(self, "inventory"):
+            data_to_save["inventory"] = [item for item in self.inventory]
+
+        # Save to Firestore
+        player_ref.set(data_to_save, merge=True)
 
     @staticmethod
     async def load_from_db(player_name, db):
@@ -132,7 +145,10 @@ class Player:
             player.max_base_damage = player_data.get('max_base_damage', 10)
 
             # Load player's treasures
-            treasures_reference = db.collection('players').document(player.name).collection('treasures')
+            treasures_ref = db.collection('players').document(player.name).collection('treasures')
+            treasures_docs = treasures_ref.get()
+            print(treasures_docs)
+            player.inventory = [doc.to_dict() for doc in treasures_docs]
             return player
         else:
             player = Player(player_name)

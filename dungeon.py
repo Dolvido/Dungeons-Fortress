@@ -33,7 +33,7 @@ class Dungeon:
 
 
     def start(self, db):
-        random_temperature = random.uniform(0.01, 1.0)
+        random_temperature = random.uniform(0.5, 0.7)
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                     model_kwargs={
@@ -41,7 +41,7 @@ class Dungeon:
                                         "max_new_tokens": 250
                                     })
 
-        prompt_template = "{adventure_history} Describe the scene for a {adventure_type} adventure and set the stage for a dungeon adventure."
+        prompt_template = "{adventure_history} Paint a vivid picture of a {adventure_type} adventure set in an ancient and mysterious dungeon. What atmosphere and characteristics define this dungeon?"
         dungeon_start_prompt = PromptTemplate(template=prompt_template,
                                                 input_variables=["adventure_history", "adventure_type"])
 
@@ -107,7 +107,7 @@ class Dungeon:
     # Implement the remaining needed methods as per the task and recorrecting where needed
     def escape_room_operation(self, db):
         # Generate random temperature variable for the language model chain
-        random_temperature = random.uniform(0.01, 1.0)
+        random_temperature = random.uniform(0.5, 0.7)
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                     model_kwargs={
@@ -115,7 +115,7 @@ class Dungeon:
                                         "max_new_tokens": 100
                                     })
 
-        generate_escape_room_prompt = "{adventure_history} Suddenly, the adventurer stumbles upon a hidden door {properties}. It is an escape room. Describe the scene in detail."
+        generate_escape_room_prompt = "{adventure_history} Amidst the labyrinthine passages, the adventurer discovers a concealed door adorned with {properties}. This is no ordinary room—it's an escape chamber. Elaborate on its enigmatic features."
         llm_escape_room_prompt = PromptTemplate(template=generate_escape_room_prompt,
                                                 input_variables=["adventure_history", "properties"])
 
@@ -125,14 +125,14 @@ class Dungeon:
 
         response = "\nESCAPE ROOM\n"
         response += escape_room_description
-        response += "\nContrary to what the dungeon has been throwing at you, this room offers you a way out. You take the chance and escape the dungeon with all your hard-earned treasures intact."
+        response += "\nDo you /continue or /escape?"
 
          # Player flees the dungeon without losing any treasure
         return response
 
     def combat_operation(self, db):
         # Generate random temperature variable for the language model chain
-        random_temperature = random.uniform(0.01, 1.0)
+        random_temperature = random.uniform(0.5, 0.7)
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                     model_kwargs={
@@ -150,7 +150,7 @@ class Dungeon:
 
         enemy_assembled_string = f'A {enemy_attributes["appearance"]} {enemy_attributes["type"]} wielding a {enemy_attributes["weapon"]} with {enemy_attributes["strength"]}, but has a {enemy_attributes["weakness"]}'
         print("Enemy string: " + enemy_assembled_string)
-        generate_enemy_prompt = "{adventure_history} In the depths of the dungeon, amidst the echoing sounds of distant horrors, our adventurer encounters a new threat. The enemy that emerges from the shadows to challenge the hero is a {enemy}. Describe the enemy in detail."
+        generate_enemy_prompt = "{adventure_history} Deep within the dungeon, where distant cries and howls reverberate, the adventurer faces an impending menace. Emerging from the gloom is a {enemy}. Detail its fearsome aspects."
         llm_enemy_prompt = PromptTemplate(template=generate_enemy_prompt, input_variables=["adventure_history", "enemy"])
 
         print("generating enemy")
@@ -177,7 +177,7 @@ class Dungeon:
 
     def get_victory_narrative(self, enemy_description):
         print("get_victory_narrative")
-        random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
+        random_temperature = random.uniform(0.5, 0.7)  # You can adjust the temperature as needed
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                         model_kwargs={
@@ -185,7 +185,7 @@ class Dungeon:
                                             "max_new_tokens": 100
                                         })
 
-        victory_prompt = "{adventure_history} The hero, with unmatched bravery and skill, faces the {enemy_description}. Describe the epic moment the hero vanquishes the beast."
+        victory_prompt = "{adventure_history} Armed with courage and unparalleled skill, the hero confronts the {enemy_description}. Narrate the awe-inspiring moment when the hero triumphs over the creature."
         llm_victory_prompt = PromptTemplate(template=victory_prompt, input_variables=["adventure_history", "enemy_description"])
 
         victory_chain = LLMChain(prompt=llm_victory_prompt, llm=dungeon_llm, memory=self.memory)
@@ -195,7 +195,7 @@ class Dungeon:
 
     def get_defeat_narrative(self, enemy_description):
         print("get_defeat_narrative")
-        random_temperature = random.uniform(0.01, 1.0)  # You can adjust the temperature as needed
+        random_temperature = random.uniform(0.5, 0.7)  # You can adjust the temperature as needed
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                         model_kwargs={
@@ -216,7 +216,7 @@ class Dungeon:
         """
         Handles the operation where the adventure enters a treasure room.
         """
-        random_temperature = random.uniform(0.01, 1.0)
+        random_temperature = random.uniform(0.5, 0.7)
 
         dungeon_llm = HuggingFaceHub(
             repo_id=self.repo_id_llm,
@@ -261,7 +261,7 @@ class Dungeon:
         """
         Handles the operation where the adventure enters an empty room.
         """
-        random_temperature = random.uniform(0.01, 1.0)
+        random_temperature = random.uniform(0.5, 0.7)
 
         dungeon_llm = HuggingFaceHub(repo_id=self.repo_id_llm,
                                     model_kwargs={
@@ -355,4 +355,12 @@ class Dungeon:
         }
             
         doc_ref.set(data)
+
+    def to_dict(self):
+        return {
+            'depth': self.depth,
+            'threat_level': self.threat_level,
+            'room_type': self.room_type,
+            'player': self.player.to_dict() if self.player else None
+        }
 
