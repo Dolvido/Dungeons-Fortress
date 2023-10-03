@@ -130,7 +130,7 @@ class Player:
         data_to_save['health'] = self.health 
         data_to_save['inventory'] = serialized_inventory
         # Serialize Dungeon object if it exists
-        if isinstance(self.dungeon, Dungeon):
+        if hasattr(self, "dungeon") and isinstance(self.dungeon, Dungeon):
             data_to_save['dungeon'] = self.dungeon.to_dict()
         #if hasattr(self, "inventory"):
         #    data_to_save["inventory"] = [item for item in self.inventory]
@@ -184,6 +184,7 @@ class Player:
 
         index: The index of item in player's inventory to sell. If argument is string 'all', sell all items.
         """
+        print("entering sell_item")
         if isinstance(index, str) and index.lower() == 'all':
             # sell all items, update player's doubloons by total value of items, and clear inventory
             total_value = 0
