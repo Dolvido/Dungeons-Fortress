@@ -124,10 +124,10 @@ class Player:
         print(f"Player's inventory: {self.inventory}")
         player_ref = db.collection('players').document(self.name)
         # Serialize Treasure objects in inventory before saving to Firestore
-        serialized_inventory = [item.to_dict() for item in self.inventory]
+        serialized_inventory = [item.to_dict() if hasattr(item, 'to_dict') else item for item in self.inventory]
         # Create a copy of self.__dict__ and replace 'inventory' with the serialized version
         data_to_save = self.__dict__.copy()
-        data_to_save['health'] = self.health 
+        #data_to_save['health'] = self.health 
         data_to_save['inventory'] = serialized_inventory
         print("data to save: " + str(data_to_save))
         # Serialize Dungeon object if it exists

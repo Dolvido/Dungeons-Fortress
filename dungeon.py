@@ -361,6 +361,6 @@ class Dungeon:
             'depth': self.depth,
             'threat_level': self.threat_level,
             'room_type': self.room_type,
-            'player': self.player.to_dict() if self.player else None
+            'player': self.player.name if self.player else None  # Store only the player's name to avoid circular reference
         }
 
