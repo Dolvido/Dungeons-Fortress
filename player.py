@@ -77,23 +77,45 @@ class Player:
         self.health = 100
         self.inventory = []
 
-    def gain_experience(self, amount):
+    def gain_experience(self, amount, db):
         self.experience += amount
         print(f"You gained {amount} experience points!")
-        self.save_to_db()  # Update the database whenever player's state changes
+        self.save_to_db(db)  # Update the database whenever player's state changes
 
     def handle_combat(self, enemy_threat_level, db):
         # Calculate combat outcome
-        combat_outcome = self.max_base_damage - enemy_threat_level  # Simplified for example
-        # Take damage, returns string message about the combat outcome
-        combat_message = self.take_damage(combat_outcome, db)
-        # Award experience - this can be modified as per the game's logic
-        self.award_exp(enemy_threat_level)
+        combat_message = ""
+        combat_outcome = "ongoing"
+        while self.health > 0 and enemy_threat_level > 0:
+            player_attack = random.randint(0, self.max_base_damage)
+            enemy_attack = random.randint(0, enemy_threat_level)
+
+            # Player attacks
+            enemy_threat_level -= player_attack
+
+            # Enemy attacks if it's still alive
+            if enemy_threat_level > 0:
+                self.take_damage(enemy_attack, db)
+
+            # Append to combat message
+            combat_message += (f"Player dealt {player_attack} damage to the enemy.\n"
+                            f"Enemy dealt {enemy_attack} damage to the player.\n"
+                            "---\n")
 
         if self.health > 0:
-            return "won", combat_message
-        else:  
-            return "lost", combat_message
+            combat_outcome = "won"
+        elif enemy_threat_level <= 0:
+            combat_outcome = "lost"
+
+        # check if player won or lost
+        if self.health <= 0:
+            death_message, lost_treasures = self.die(db)
+            self.dungeon.delete_dungeon(db)
+            combat_message += f"\n{death_message}\n{lost_treasures}"
+
+        # Award experience - this can be modified as per the game's logic
+        self.gain_experience(enemy_threat_level, db)
+        return combat_outcome, combat_message
 
     def award_exp(self, exp):
         self.experience += exp
