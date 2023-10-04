@@ -124,11 +124,12 @@ class Player:
         print(f"Player's inventory: {self.inventory}")
         player_ref = db.collection('players').document(self.name)
         # Serialize Treasure objects in inventory before saving to Firestore
-        serialized_inventory = [item.to_dict() if isinstance(item, Treasure) else item for item in self.inventory]
+        serialized_inventory = [item.to_dict() for item in self.inventory]
         # Create a copy of self.__dict__ and replace 'inventory' with the serialized version
         data_to_save = self.__dict__.copy()
         data_to_save['health'] = self.health 
         data_to_save['inventory'] = serialized_inventory
+        print("data to save: " + str(data_to_save))
         # Serialize Dungeon object if it exists
         if hasattr(self, "dungeon") and isinstance(self.dungeon, Dungeon):
             data_to_save['dungeon'] = self.dungeon.to_dict()
@@ -168,6 +169,7 @@ class Player:
         self.inventory.append(treasure.to_dict())
         # add treasure to the player document treasure collection
         treasure_ref = db.collection('players').document(self.name).collection('treasures').document()
+        treasure.id = treasure_ref.id   # Get the id of the document for the treasure
         treasure_ref.set(treasure.to_dict())
         print(f"Added {treasure} to player's inventory.")
 
@@ -181,16 +183,14 @@ class Player:
     
     def sell_item(self, index, db):
         if isinstance(index, int) and 0 <= index < len(self.inventory):
-            sold_item = self.inventory.pop(index) 
-
-            sold_treasure_ref = db.collection('players').document(self.name).collection('treasures').document(sold_item.id)
-
-            self.doubloons += sold_item.value
-                    
-            # Save player's state to the database after selling an item
+            sold_item = self.inventory.pop(index)
+            # Use the id attribute of the treasure to delete the corresponding document in Firebase
             sold_treasure_ref = db.collection('players').document(self.name).collection('treasures').document(sold_item.id)
             sold_treasure_ref.delete()
+            self.doubloons += sold_item.value
+            # Save player's state to the database after selling an item
             self.save_to_db(db)
+            return f"Sold {sold_item.treasure_type} for {sold_item.value} doubloons."
 
                     
             return f"Sold {sold_item.treasure_type} for {sold_item.value} doubloons."
