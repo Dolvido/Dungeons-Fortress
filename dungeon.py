@@ -249,7 +249,7 @@ class Dungeon:
         generated_treasure = treasure_chain.predict(treasure=str(discovered_treasure))  # Changed {treasure_assembled_string={treasure_assembled_string}} to treasure=treasure_assembled_string
 
         # Add the treasure to the player's inventory and database
-        self.add_treasure_to_db(discovered_treasure, db)
+        #self.add_treasure_to_db(discovered_treasure, db)
 
         response = "\nTREASURE ROOM\n"
         response += f"\nYou discovered a {discovered_treasure}!"
