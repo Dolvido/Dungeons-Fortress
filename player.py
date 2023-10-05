@@ -255,15 +255,15 @@ class Player:
 
     def use_item(self, item_index, db):
         """
-        Use an item from the inventory. The effect of the item will be 
+        Use an item from the players items. The effect of the item will be 
         applied to the player. 
-        :param item_index: The index of the item in the inventory.
+        :param item_index: The index of the item in the items attr.
         """
-        if item_index < 0 or item_index >= len(self.inventory):
-            return "Invalid item index. Please provide an index between 1 and "+str(len(self.inventory))+"."
+        if item_index < 0 or item_index >= len(self.items):
+            return "Invalid item index. Please provide an index between 1 and "+str(len(self.items))+"."
 
         # Remove the item from the inventory
-        item = self.inventory.pop(item_index)
+        item = self.items.pop(item_index)
 
         # The nature of the effect depends on what the item is. This 
         # is just an example which assumes that the item is a potion 
