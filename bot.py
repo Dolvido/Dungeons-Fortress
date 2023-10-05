@@ -119,10 +119,11 @@ async def inventory(interaction, db):
         embed.description = "Your inventory is empty."
     else:
         if player.inventory:
-            embed.add_field(name="Treasures", value="\n".join([str(treasure) for treasure in player.inventory]), inline=False)
-
+            # add the treasures to the embed, add an integer field starting at 1 for each treasure
+            embed.add_field(name="Treasures", value="\n".join([f"{idx+1}. {treasure}" for idx, treasure in enumerate(player.inventory)]), inline=False)
         if player.items:
-            embed.add_field(name="Items", value="\n".join([str(item) for item in player.items]), inline=False)
+            # add the items to the embed, add an integer field starting at 1 for each item
+            embed.add_field(name="Items", value="\n".join([f"{idx+1}. {item}" for idx, item in enumerate(player.items)]), inline=False)
 
     await interaction.followup.send(embed=embed)
 
