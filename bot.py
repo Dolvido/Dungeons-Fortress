@@ -283,26 +283,10 @@ async def buy(interaction, item_index, db):
 
         # Retrieve items' info from Firestore
         player_ref = db.collection('players').document(player.name)
-        player_data = player_ref.get()
-        if player_data.exists:
-            player_data = player_data.to_dict()
-            items = player_data.get('items', [])  # now with the serialized items
-            serialized_item = items[item_index]
-
-            item = Item.from_dict(serialized_item)  # Convert from dictionary
-
-            if player.doubloons < item.cost:
-                error_message = "You do not have enough doubloons to buy this item."
-                await interaction.followup.send(content=error_message)
-                return
+        shop = Shop()
         
-            # If player can afford the item, deduct the cost from their doubloons
-            player.doubloons -= item.cost
-        
-            # Add the item to player's items and update in db
-            player.add_to_items(item, db)  # Calling new method to persist to firebase
-        
-            await interaction.followup.send(content=f"You bought the {item.name}!")
+        msg = shop.buy(item_index, player, db)
+        await interaction.followup.send(content=f"You bought the {msg}!")
         
     except Exception as e:
         print(f"An error occurred while purchasing item: {e}")
