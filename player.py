@@ -157,7 +157,7 @@ class Player:
         # Serialize Item objects in items before saving to Firestore
         serialized_items = [item.to_dict() if hasattr(item, 'to_dict') else item for item in self.items]
         data_to_save['items'] = serialized_items
-        
+
         # Serialize Dungeon object if it exists
         if hasattr(self, "dungeon") and isinstance(self.dungeon, Dungeon):
             data_to_save['dungeon'] = self.dungeon.to_dict()
@@ -252,3 +252,36 @@ class Player:
         item.id = item_ref.id   # Get the id of the document for the item
         item_ref.set(item.to_dict())
         print(f"Added {item} to player's items.")
+
+    def use_item(self, item_index, db):
+        """ 
+        The player uses an item from their inventory.
+
+        Args:
+        - item_index (int): the index of the item in the inventory list.
+        - db (object): a firestore database connection object.
+
+        Returns:
+        - (str): a message indicating the result of the operation.
+        """
+
+        if isinstance(item_index, int) and 0 <= item_index < len(self.items):
+            # Remove the item from the inventory
+            item = self.items.pop(item_index)
+                    
+            # Remove the corresponding document from Firestore
+            item_ref = db.collection('players').document(self.name).collection('items').document(item.id)
+            item_ref.delete()
+
+            # Update player's health and other stats as per the item's effect
+            # Here we are assuming the item has a method called 'use' that when called returns the player's increased health
+            self.health += item.use()
+            self.health = min(self.health, self.max_health)  # Health should not exceed maximum health
+
+            # Save player's state to the database after using an item
+            self.save_to_db(db)
+
+            return f"You used the {item.name}."
+                
+        else:
+            return "Invalid item index. Please select a valid item."

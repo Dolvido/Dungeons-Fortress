@@ -25,6 +25,16 @@ class Item:
             description = data.get("description")
         )
         return item
+    
+    def use(self):
+        # A method to use or activate the item and apply its effects
+        # This is a basic example; you can expand this based on your game's mechanics
+        if self.name == "health_potion":
+            return "You drank the potion. You feel its magical energy course through your body."
+        elif self.name == "strength_potion":
+            return "You drank the potion. You feel its magical energy course through your body."
+        else:       
+            return f"You used the {self.name}. Its {self.description}."
 
 class Shop:
     def __init__(self):
