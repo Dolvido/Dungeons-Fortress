@@ -95,7 +95,7 @@ class Player:
 
             # Enemy attacks if it's still alive
             if enemy_threat_level > 0:
-                self.take_damage(enemy_attack, db)
+                combat_message += self.take_damage(enemy_attack, db)
 
             # Append to combat message
             combat_message += (f"Player dealt {player_attack} damage to the enemy.\n"
@@ -104,11 +104,9 @@ class Player:
 
         if self.health > 0:
             combat_outcome = "won"
-        elif enemy_threat_level <= 0:
+            
+        if enemy_threat_level <= 0 or self.health <= 0:
             combat_outcome = "lost"
-
-        # check if player won or lost
-        if self.health <= 0:
             death_message, lost_treasures = self.die(db)
             self.dungeon.delete_dungeon(db)
             combat_message += f"\n{death_message}\n{lost_treasures}"
