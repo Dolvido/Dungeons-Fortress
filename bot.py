@@ -313,6 +313,24 @@ async def stats(interaction, db):
     embed.add_field(name="Doubloons", value=f"{player.doubloons}", inline=False)
     await interaction.followup.send(embed=embed)
 
+async def use(interaction, item_index, db):
+    try:
+        await interaction.response.defer()
+        player = await Player.load_from_db(interaction.user.name, db)
+        if not player:
+            error_message = "Player not found. Please start a new game."
+            await interaction.followup.send(content=error_message)
+            return
+
+        use_item_response = player.use_item(item_index-1)  # items in inventory start from 1
+        player.save_to_db(db)
+        await interaction.followup.send(content=use_item_response)
+            
+    except Exception as e:  # Catching exceptions generically should be the last resort
+        print(f"An error occurred: {e}.")
+        error_message = "An error occurred while using the item. Please try again."
+        await interaction.followup.send(content=error_message)
+
 def main():
     intents = discord.Intents.default()
     bot = DungeonBot(intents=intents)
@@ -357,6 +375,10 @@ def main():
     @bot.tree.command(name="stats")
     async def stats_cmd(interaction):
         await stats(interaction, db=db)
+
+    @bot.tree.command(name="use")
+    async def use_cmd(interaction, item_index: int):
+        await use(interaction, item_index, db=db)
 
     bot.run(TOKEN)
 

@@ -253,35 +253,24 @@ class Player:
         item_ref.set(item.to_dict())
         print(f"Added {item} to player's items.")
 
-    def use_item(self, item_index, db):
-        """ 
-        The player uses an item from their inventory.
-
-        Args:
-        - item_index (int): the index of the item in the inventory list.
-        - db (object): a firestore database connection object.
-
-        Returns:
-        - (str): a message indicating the result of the operation.
+    def use_item(self, item_index):
         """
+        Use an item from the inventory. The effect of the item will be 
+        applied to the player. 
+        :param item_index: The index of the item in the inventory.
+        """
+        if item_index < 0 or item_index >= len(self.inventory):
+            return "Invalid item index. Please provide an index between 1 and "+str(len(self.inventory))+"."
 
-        if isinstance(item_index, int) and 0 <= item_index < len(self.items):
-            # Remove the item from the inventory
-            item = self.items.pop(item_index)
-                    
-            # Remove the corresponding document from Firestore
-            item_ref = db.collection('players').document(self.name).collection('items').document(item.id)
-            item_ref.delete()
+        # Remove the item from the inventory
+        item = self.inventory.pop(item_index)
 
-            # Update player's health and other stats as per the item's effect
-            # Here we are assuming the item has a method called 'use' that when called returns the player's increased health
-            self.health += item.use()
-            self.health = min(self.health, self.max_health)  # Health should not exceed maximum health
-
-            # Save player's state to the database after using an item
-            self.save_to_db(db)
-
-            return f"You used the {item.name}."
+        # The nature of the effect depends on what the item is. This 
+        # is just an example which assumes that the item is a potion 
+        # that heals the player. You'll need to define what the effects
+        # are for each kind of item that the player can use.
+        if type(item) is Potion:
+            self.health += item.healing_value
+        # Other types of items would go here...
                 
-        else:
-            return "Invalid item index. Please select a valid item."
+        return f"Used {item.name}, a {type(item).__name__}."
