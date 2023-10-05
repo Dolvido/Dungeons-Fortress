@@ -270,7 +270,10 @@ class Player:
         # that heals the player. You'll need to define what the effects
         # are for each kind of item that the player can use.
         if type(item) is Item:
-            self.health += item.healing_value
+            # check what type of item it is
+            if item.name == "health_potion":
+                self.health += 50
+
         # Other types of items would go here...
 
         self.save_to_db(db)
