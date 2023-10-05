@@ -269,10 +269,19 @@ class Player:
         # is just an example which assumes that the item is a potion 
         # that heals the player. You'll need to define what the effects
         # are for each kind of item that the player can use.
+        msg = ""
         if type(item) is Item:
             # check what type of item it is
             if item.name == "health_potion":
                 self.health += 50
+                if self.health > self.max_health:
+                    self.health = self.max_health
+                msg = "You drank the potion. You feel its magical energy course through your body."
+            elif item.name == "strength_potion":
+                self.max_base_damage += 5
+                msg = "You drank the potion. You feel its magical energy course through your body."
+            else:
+                msg = f"You used the {item.name}. Its {item.description}."
 
         # Other types of items would go here...
 
