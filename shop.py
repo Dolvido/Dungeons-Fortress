@@ -35,15 +35,17 @@ class Shop:
         return "\n".join([f"{idx+1}. {item.name} - {item.cost} doubloons - {item.description}" for idx, item in enumerate(self.items)])
 
     def buy(self, item_index, player, db):
+        # Check if item index is within valid range of items
         if item_index < 0 or item_index >= len(self.items):
-            return "Invalid item index."
+            return "Invalid item index. Please enter a valid index for an item in the shop."
 
         item_to_buy = self.items[item_index]
+        # Check if player can afford the item before proceeding with purchase
         if player.doubloons < item_to_buy.cost:
-            return "Not enough doubloons."
-            
+            return "You do not have enough doubloons to buy this item."
+
+        # If the player can afford the item, proceed with purchase
         player.doubloons -= item_to_buy.cost
         player.items.append(item_to_buy)
-
-        player.save_to_db(db)
-        return f"You bought {item_to_buy.name}."
+        player.save_to_db(db)  # Now save the player's updated state to the Firestore
+        return f"You bought the {item_to_buy.name} for {item_to_buy.cost} doubloons."
