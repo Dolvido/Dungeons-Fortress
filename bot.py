@@ -322,7 +322,7 @@ async def use(interaction, item_index, db):
             await interaction.followup.send(content=error_message)
             return
 
-        use_item_response = player.use_item(item_index-1)  # items in inventory start from 1
+        use_item_response = player.use_item(item_index-1, db)  # items in inventory start from 1
         player.save_to_db(db)
         await interaction.followup.send(content=use_item_response)
             

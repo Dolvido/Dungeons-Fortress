@@ -253,7 +253,7 @@ class Player:
         item_ref.set(item.to_dict())
         print(f"Added {item} to player's items.")
 
-    def use_item(self, item_index):
+    def use_item(self, item_index, db):
         """
         Use an item from the inventory. The effect of the item will be 
         applied to the player. 
@@ -269,8 +269,10 @@ class Player:
         # is just an example which assumes that the item is a potion 
         # that heals the player. You'll need to define what the effects
         # are for each kind of item that the player can use.
-        if type(item) is Potion:
+        if type(item) is Item:
             self.health += item.healing_value
         # Other types of items would go here...
+
+        self.save_to_db(db)
                 
         return f"Used {item.name}, a {type(item).__name__}."
