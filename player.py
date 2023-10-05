@@ -240,9 +240,9 @@ class Player:
         else:
             return "Invalid command. Please enter a valid index or 'all'."
                     
-                
+                    
     def add_to_items(self, item, db):
-        self.items.append(item.to_dict())
+        self.items.append(item.to_dict())  # Convert to dictionary before appending
         # add item to the player document item collection
         item_ref = db.collection('players').document(self.name).collection('items').document()
         item.id = item_ref.id   # Get the id of the document for the item

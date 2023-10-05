@@ -274,36 +274,36 @@ async def buy(interaction, item_index, db):
 
         print(f"Debug: Item index: {item_index}")
 
-        shop = Shop()
-        items = shop.items
-        if item_index < 0 or item_index >= len(items):
-            error_message = "Invalid item index. Please try again."
-            await interaction.followup.send(content=error_message)
-            return
-
-        item = items[item_index]
-
-        player = await Player.load_from_db(interaction.user.name, db)
+        player = await Player.load_from_db(interaction.user.name, db)  # loading the player from the database
 
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
             return
 
-        if player.doubloons < item.cost:
-            error_message = "You do not have enough doubloons to buy this item."
-            await interaction.followup.send(content=error_message)
-            return
+        # Retrieve items' info from Firestore
+        player_ref = db.collection('players').document(player.name)
+        player_data = player_ref.get()
+        if player_data.exists:
+            player_data = player_data.to_dict()
+            items = player_data.get('items', [])  # now with the serialized items
+            serialized_item = items[item_index]
 
-        # If player can afford the item, deduct the cost from their doubloons
-        player.doubloons -= item.cost
+            item = Item.from_dict(serialized_item)  # Convert from dictionary
 
-        # Add the item to player's items and update in db
-        player.items.append(item)
-
-        player.save_to_db(db)
-        await interaction.followup.send(content=f"You bought the {item.name}!")
-
+            if player.doubloons < item.cost:
+                error_message = "You do not have enough doubloons to buy this item."
+                await interaction.followup.send(content=error_message)
+                return
+        
+            # If player can afford the item, deduct the cost from their doubloons
+            player.doubloons -= item.cost
+        
+            # Add the item to player's items and update in db
+            player.add_to_items(item, db)  # Calling new method to persist to firebase
+        
+            await interaction.followup.send(content=f"You bought the {item.name}!")
+        
     except Exception as e:
         print(f"An error occurred while purchasing item: {e}")
         error_message = "An error occurred during the transaction. Please try again."
