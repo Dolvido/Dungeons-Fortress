@@ -219,46 +219,41 @@ async def sell(interaction, item_index, db):
     try:
         item_index -= 1  # Adjust for 0-based indexing
         await interaction.response.defer()
-            
+                
         print(f"Debug: Item index: {item_index}")
-            
+                
         player = await Player.load_from_db(interaction.user.name, db)
-            
+                
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
             return
 
         # Retrieve player's inventory from Firestore
-        inventory_ref = db.collection('players').document(player.name).collection('inventory')
-        inventory_documents = list(inventory_ref.stream())
-        print(f"Debug: Inventory documents: {inventory_documents}")
-            
-        # Load the Treasure object from the document at the specified index
-        if item_index < 0 or item_index >= len(inventory_documents):
-            error_message = "Invalid item index. Please try again."
-            await interaction.followup.send(content=error_message)
-            return
-        target_treasure_doc = inventory_documents[item_index]
-        
- 
-        target_treasure = Treasure.from_dict(target_treasure_doc.to_dict())
-            
-        # Add the item's value to player's doubloons
-        player.doubloons += target_treasure.value
-
-        #update player doubloons in Firestore
         player_ref = db.collection('players').document(player.name)
-        player_ref.set({"doubloons": player.doubloons}, merge=True)
-            
-        # Delete the item from Firestore
-        target_treasure_doc.reference.delete()
+        player_data = player_ref.get()
+        if player_data.exists:
+            player_data = player_data.to_dict()
+            inventory = player_data.get('inventory', [])
+            if item_index < 0 or item_index >= len(inventory):
+                error_message = "Invalid item index. Please try again."
+                await interaction.followup.send(content=error_message)
+                return
+            target_treasure_doc = inventory[item_index]
 
+            target_treasure = Treasure.from_dict(target_treasure_doc)
+                    
+            # Add the item's value to player's doubloons
+            player.doubloons += target_treasure.value
 
-        sale_response = f"Sold {target_treasure.treasure_type} for {target_treasure.value} doubloons."
-            
-        # The sell operation is done, now save the player's updated state to the Firestore
-        await interaction.followup.send(content=sale_response)
+            #remove target treasure from player in Firestore
+            inventory.pop(item_index)
+            player_ref.update({"inventory": inventory, "doubloons": player.doubloons})
+
+            sale_response = f"Sold {target_treasure.treasure_type} for {target_treasure.value} doubloons."
+                
+            # The sell operation is done, now save the player's updated state to the Firestore
+            await interaction.followup.send(content=sale_response)
             
     except Exception as e:
         print(f"Debug: An error occurred while selling items: {e}")
@@ -285,7 +280,7 @@ async def buy(interaction, item_index, db):
             error_message = "Invalid item index. Please try again."
             await interaction.followup.send(content=error_message)
             return
-            
+
         item = items[item_index]
 
         player = await Player.load_from_db(interaction.user.name, db)
@@ -300,11 +295,11 @@ async def buy(interaction, item_index, db):
             await interaction.followup.send(content=error_message)
             return
 
-        # If the player can afford the item, deduct the cost from their doubloons
+        # If player can afford the item, deduct the cost from their doubloons
         player.doubloons -= item.cost
 
-        # Add the item to the player's items and update the db
-        player.add_to_items(item, db)
+        # Add the item to player's items and update in db
+        player.items.append(item)
 
         player.save_to_db(db)
         await interaction.followup.send(content=f"You bought the {item.name}!")
@@ -312,7 +307,7 @@ async def buy(interaction, item_index, db):
     except Exception as e:
         print(f"An error occurred while purchasing item: {e}")
         error_message = "An error occurred during the transaction. Please try again."
-        error_message += f"\nError Details: {e}"
+        error_message += f"nError Details: {e}"
         await interaction.followup.send(content=error_message)
 
 async def stats(interaction, db):

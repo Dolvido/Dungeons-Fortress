@@ -2,6 +2,7 @@ import random
 from firebase_admin import firestore
 from treasure import Treasure
 from dungeon import Dungeon
+from shop import Item
 
 class Player:
 
@@ -15,6 +16,7 @@ class Player:
         self.max_health = 100 # This is the maximum health the player can have for now
         self.max_base_damage = 10
         self.inventory = []
+        self.items = []
         self.armor = None
 
     def get_stats(self):
@@ -138,6 +140,7 @@ class Player:
             'health': self.health,
             'max_base_damage': self.max_base_damage,
             'inventory': self.inventory,
+            'items': self.items,
         }
 
     def save_to_db(self, db):
@@ -178,8 +181,12 @@ class Player:
             # Load player's treasures
             treasures_ref = db.collection('players').document(player.name).collection('treasures')
             treasures_docs = treasures_ref.get()
-            print(treasures_docs)
             player.inventory = [Treasure.from_dict(doc.to_dict()) for doc in treasures_docs]
+
+            # Load player's items
+            items_ref = db.collection('players').document(player.name).collection('items')
+            items_docs = items_ref.get()
+            player.items = [Item.from_dict(doc.to_dict()) for doc in items_docs]
 
             return player
         else:
