@@ -107,22 +107,23 @@ async def continue_command(interaction, db):
 
 async def inventory(interaction, db):
     await interaction.response.defer()
-    inventory_collection = db.collection('players').document(interaction.user.name).collection('treasures')
-    inventory_docs = inventory_collection.get()
+    player = await Player.load_from_db(interaction.user.name, db)
+    if not player:
+        error_message = "Player not found. Please start a new game."
+        await interaction.followup.send(content=error_message)
+        return
 
     embed = discord.Embed(title="Your Inventory", color=0x00ff00)
-        
-    if not inventory_docs:
+            
+    if not player.inventory and not player.items:
         embed.description = "Your inventory is empty."
     else:
-        idx = 1
-        for doc in inventory_docs:
-            item = Treasure.from_dict(doc.to_dict()) 
-            item_name = f"{idx}: {item.material} {item.treasure_type}" 
-            item_description = f"Origin: {item.origin}\nRarity: {item.rarity}\nValue: {item.value}"
-                        
-            embed.add_field(name=f"Item: {item_name}", value=f"{item_description}", inline=False)
-            idx += 1
+        if player.inventory:
+            embed.add_field(name="Treasures", value="\n".join([str(treasure) for treasure in player.inventory]), inline=False)
+
+        if player.items:
+            embed.add_field(name="Items", value="\n".join([str(item) for item in player.items]), inline=False)
+
     await interaction.followup.send(embed=embed)
 
 async def equip(interaction, db):
@@ -274,24 +275,28 @@ async def buy(interaction, item_index, db):
 
         print(f"Debug: Item index: {item_index}")
 
-        player = await Player.load_from_db(interaction.user.name, db)  # loading the player from the database
+        player = await Player.load_from_db(interaction.user.name, db)  # Loading the player from the database
 
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
             return
 
-        # Retrieve items' info from Firestore
-        player_ref = db.collection('players').document(player.name)
+        # Initialise the Shop and buy the selected item
         shop = Shop()
-        
-        msg = shop.buy(item_index, player, db)
-        await interaction.followup.send(content=f"You bought the {msg}!")
-        
+            
+        try:
+            item_name = shop.buy(item_index, player, db)
+            await interaction.followup.send(content=f"You bought the {item_name}!")
+        except Exception as e:
+            print(f"An error occurred while purchasing item: {e}")
+            error_message = str(e)
+            await interaction.followup.send(content=error_message)
+
     except Exception as e:
         print(f"An error occurred while purchasing item: {e}")
         error_message = "An error occurred during the transaction. Please try again."
-        error_message += f"nError Details: {e}"
+        error_message += f"\nError Details: {e}"
         await interaction.followup.send(content=error_message)
 
 async def stats(interaction, db):
