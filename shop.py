@@ -4,6 +4,25 @@ class Item:
         self.cost = cost
         self.description = description
 
+    def to_dict(self):
+        """
+        Convert the Item object to a dictionary for database storage.
+        """
+        return {
+            "name": self.name,
+            "cost": self.cost,
+            "description": self.description
+        }
+
+    @staticmethod
+    def from_dict(data):
+        item = Item(
+            name = data.get("name"),
+            cost = data.get("cost"),
+            description = data.get("description")
+        )
+        return item
+
 class Shop:
     def __init__(self):
         self.items = [
@@ -24,7 +43,7 @@ class Shop:
             return "Not enough doubloons."
             
         player.doubloons -= item_to_buy.cost
-        player.inventory.append(item_to_buy)
+        player.items.append(item_to_buy)
 
         player.save_to_db(db)
         return f"You bought {item_to_buy.name}."

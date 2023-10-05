@@ -276,52 +276,57 @@ async def buy(interaction, item_index, db):
     try:
         item_index -= 1  # Adjust for 0-based indexing
         await interaction.response.defer()
-        
+
         print(f"Debug: Item index: {item_index}")
-        
+
+        shop = Shop()
+        items = shop.items
+        if item_index < 0 or item_index >= len(items):
+            error_message = "Invalid item index. Please try again."
+            await interaction.followup.send(content=error_message)
+            return
+            
+        item = items[item_index]
+
         player = await Player.load_from_db(interaction.user.name, db)
-        
+
         if not player:
             error_message = "Player not found. Please start a new game."
             await interaction.followup.send(content=error_message)
             return
 
-        # Retrieve player's inventory from Firestore
-        inventory_ref = db.collection('players').document(player.name).collection('inventory')
-        inventory_documents = list(inventory_ref.stream())
-        print(f"Debug: Inventory documents: {inventory_documents}")
-        
-        # Load the Treasure object from the document at the specified index
-        if item_index < 0 or item_index >= len(inventory_documents):
-            error_message = "Invalid item index. Please try again."
+        if player.doubloons < item.cost:
+            error_message = "You do not have enough doubloons to buy this item."
             await interaction.followup.send(content=error_message)
             return
-        target_treasure_doc = inventory_documents[item_index]
-    
 
-        target_treasure = Treasure.from_dict(target_treasure_doc.to_dict())
-        
-        # Add the item's value to player's doubloons
-        player.doubloons += target_treasure.value
+        # If the player can afford the item, deduct the cost from their doubloons
+        player.doubloons -= item.cost
 
-        #update player doubloons in Firestore
-        player_ref = db.collection('players').document(player.name)
-        player_ref.set({"doubloons": player.doubloons}, merge=True)
-        
-        # Delete the item from Firestore
-        target_treasure_doc.reference.delete()
+        # Add the item to the player's items and update the db
+        player.add_to_items(item, db)
 
+        player.save_to_db(db)
+        await interaction.followup.send(content=f"You bought the {item.name}!")
 
-        sale_response = f"Sold {target_treasure.treasure_type} for {target_treasure.value} doubloons."
-        
-        # The sell operation is done, now save the player's updated state to the Firestore
-        await interaction.followup.send(content=sale_response)
-        
     except Exception as e:
-        print(f"Debug: An error occurred while selling items: {e}")
+        print(f"An error occurred while purchasing item: {e}")
         error_message = "An error occurred during the transaction. Please try again."
         error_message += f"\nError Details: {e}"
         await interaction.followup.send(content=error_message)
+
+async def stats(interaction, db):
+    await interaction.response.defer()
+    player = await Player.load_from_db(interaction.user.name, db)
+    if not player:
+        error_message = "Player not found. Please start a new game."
+        await interaction.followup.send(content=error_message)
+        return
+
+    embed = discord.Embed(title="Your Stats", color=0x00ff00)
+    embed.add_field(name="Health", value=f"{player.health}/{player.max_health}", inline=False)
+    embed.add_field(name="Doubloons", value=f"{player.doubloons}", inline=False)
+    await interaction.followup.send(embed=embed)
 
 def main():
     intents = discord.Intents.default()
@@ -362,8 +367,11 @@ def main():
 
     @bot.tree.command(name="buy")
     async def buy_cmd(interaction, item_index: int):
-        item_index -= 1  # adjusts for 0-base indexing
         await buy(interaction, item_index, db=db)
+    
+    @bot.tree.command(name="stats")
+    async def stats_cmd(interaction):
+        await stats(interaction, db=db)
 
     bot.run(TOKEN)
 

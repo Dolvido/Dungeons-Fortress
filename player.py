@@ -12,6 +12,7 @@ class Player:
         self.exp = 0
         self.doubloons = 0
         self.health = 100
+        self.max_health = 100 # This is the maximum health the player can have for now
         self.max_base_damage = 10
         self.inventory = []
         self.armor = None
@@ -233,4 +234,10 @@ class Player:
             return "Invalid command. Please enter a valid index or 'all'."
                     
                 
-
+    def add_to_items(self, item, db):
+        self.items.append(item.to_dict())
+        # add item to the player document item collection
+        item_ref = db.collection('players').document(self.name).collection('items').document()
+        item.id = item_ref.id   # Get the id of the document for the item
+        item_ref.set(item.to_dict())
+        print(f"Added {item} to player's items.")
