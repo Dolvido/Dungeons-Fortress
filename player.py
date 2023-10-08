@@ -17,6 +17,8 @@ class Player:
         self.max_base_damage = 10
         self.inventory = []
         self.items = []
+        self.boost_duration = 0
+        self.boosted = False
         self.armor = None
 
     def get_stats(self):
@@ -279,6 +281,8 @@ class Player:
                 msg = "You drank the potion. You feel its magical energy course through your body."
             elif item.name == "strength_potion":
                 self.max_base_damage += 5
+                self.boost_duration = 3
+                self.boosted = True
                 msg = "You drank the potion. You feel its magical energy course through your body."
             else:
                 msg = f"You used the {item.name}. Its {item.description}."
